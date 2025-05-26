@@ -12,11 +12,14 @@ interface CartSummaryProps {
 }
 
 export function CartSummary({ showCheckoutButton = true }: CartSummaryProps) {
-  const { cartItems, subtotal } = useCart();
+  const { items, total: cartTotal } = useCart();
   const { user } = useAuth();
   const router = useRouter();
   const [deliveryFee, setDeliveryFee] = useState(3.99);
   const [total, setTotal] = useState(0);
+
+  // Calculate subtotal from items
+  const subtotal = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
 
   useEffect(() => {
     setTotal(subtotal + deliveryFee);
@@ -57,14 +60,14 @@ export function CartSummary({ showCheckoutButton = true }: CartSummaryProps) {
         <Button 
           className="w-full mt-6 bg-red-600 hover:bg-red-700 text-white"
           size="lg"
-          disabled={cartItems.length === 0}
+          disabled={items.length === 0}
           onClick={handleCheckout}
         >
           {user ? 'Proceed to Checkout' : 'Sign In to Checkout'}
         </Button>
       )}
       
-      {cartItems.length === 0 && showCheckoutButton && (
+      {items.length === 0 && showCheckoutButton && (
         <p className="text-sm text-muted-foreground text-center mt-3">
           Your cart is empty. Add items to proceed.
         </p>

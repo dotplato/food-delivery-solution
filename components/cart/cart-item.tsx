@@ -49,6 +49,42 @@ export function CartItem({ item, updateQuantity, removeItem }: CartItemProps) {
             <p className="text-sm text-muted-foreground mt-1">
               ${item.price.toFixed(2)}
             </p>
+            {item.options && (
+              <div className="mt-2 space-y-1">
+                {item.options.selectedOption && (
+                  <p className="text-sm text-muted-foreground">
+                    {item.options.selectedOption.name}
+                    {item.options.selectedOption.price_adjustment > 0 && (
+                      <span className="ml-1">(+${item.options.selectedOption.price_adjustment.toFixed(2)})</span>
+                    )}
+                  </p>
+                )}
+                {item.options.selectedAddons.length > 0 && (
+                  <div className="text-sm text-muted-foreground">
+                    {item.options.selectedAddons.map(addon => (
+                      <p key={addon.id}>
+                        {addon.name}
+                        {addon.price_adjustment > 0 && (
+                          <span className="ml-1">(+${addon.price_adjustment.toFixed(2)})</span>
+                        )}
+                      </p>
+                    ))}
+                  </div>
+                )}
+                {item.options.selectedMealOptions && item.options.selectedMealOptions.length > 0 && (
+                  <div className="text-sm text-muted-foreground">
+                    {item.options.selectedMealOptions.map(option => (
+                      <p key={option.id}>
+                        {option.name}
+                        {option.price_adjustment > 0 && (
+                          <span className="ml-1">(+${option.price_adjustment.toFixed(2)})</span>
+                        )}
+                      </p>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
           <Button 
             variant="ghost" 

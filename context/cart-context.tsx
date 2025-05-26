@@ -1,132 +1,138 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { CartItem } from '@/lib/types';
+import { MenuItem, MenuItemOption, MenuItemAddon, MealOption } from '@/lib/types';
 import { toast } from 'sonner';
 
+interface CartItem {
+  id: string;
+  name: string;
+  description: string | null;
+  price: number;
+  image_url: string | null;
+  category_id: string | null;
+  available: boolean;
+  featured: boolean;
+  created_at: string;
+  quantity: number;
+  options?: {
+    selectedOption?: MenuItemOption;
+    selectedAddons: MenuItemAddon[];
+    selectedMealOptions?: MealOption[];
+  };
+}
+
 interface CartContextType {
-  cartItems: CartItem[];
+  items: CartItem[];
   addToCart: (item: CartItem) => void;
   removeFromCart: (itemId: string) => void;
   updateQuantity: (itemId: string, quantity: number) => void;
   clearCart: () => void;
-  subtotal: number;
-  totalItems: number;
+  total: number;
 }
 
-const defaultCartContext: CartContextType = {
-  cartItems: [],
-  addToCart: () => {},
-  removeFromCart: () => {},
-  updateQuantity: () => {},
-  clearCart: () => {},
-  subtotal: 0,
-  totalItems: 0,
-};
+const CartContext = createContext<CartContextType | undefined>(undefined);
 
-const CartContext = createContext<CartContextType>(defaultCartContext);
+export function CartProvider({ children }: { children: React.ReactNode }) {
+  const [items, setItems] = useState<CartItem[]>([]);
+  const [total, setTotal] = useState(0);
 
-export const useCart = () => useContext(CartContext);
-
-export const CartProvider = ({ children }: { children: React.ReactNode }) => {
-  const [cartItems, setCartItems] = useState<CartItem[]>([]);
-  const [isInitialized, setIsInitialized] = useState(false);
-
-  // Calculate subtotal
-  const subtotal = cartItems.reduce(
-    (acc, item) => acc + item.price * item.quantity,
-    0
-  );
-
-  // Calculate total number of items
-  const totalItems = cartItems.reduce((acc, item) => acc + item.quantity, 0);
-
-  // Load cart from localStorage when component mounts
   useEffect(() => {
-    const storedCart = localStorage.getItem('cart');
-    if (storedCart) {
-      try {
-        setCartItems(JSON.parse(storedCart));
-      } catch (error) {
-        console.error('Error parsing stored cart:', error);
-      }
+    // Load cart from localStorage
+    const savedCart = localStorage.getItem('cart');
+    if (savedCart) {
+      setItems(JSON.parse(savedCart));
     }
-    setIsInitialized(true);
   }, []);
 
-  // Save cart to localStorage whenever it changes
   useEffect(() => {
-    if (isInitialized) {
-      localStorage.setItem('cart', JSON.stringify(cartItems));
-    }
-  }, [cartItems, isInitialized]);
+    // Save cart to localStorage
+    localStorage.setItem('cart', JSON.stringify(items));
+    
+    // Calculate total
+    const newTotal = items.reduce((sum, item) => {
+      return sum + (item.price * item.quantity);
+    }, 0);
+    setTotal(newTotal);
+  }, [items]);
 
-  // Add item to cart
-  const addToCart = (newItem: CartItem) => {
-    setCartItems((prev) => {
-      const existingItem = prev.find((item) => item.id === newItem.id);
-      
-      if (existingItem) {
-        // Update quantity if item already exists
-        const updatedItems = prev.map((item) =>
-          item.id === newItem.id
-            ? { ...item, quantity: item.quantity + newItem.quantity }
-            : item
-        );
-        toast.success(`${newItem.name} quantity updated in cart`);
-        return updatedItems;
+  const addToCart = (item: CartItem) => {
+    setItems(currentItems => {
+      // Check if item with same options already exists
+      const existingItemIndex = currentItems.findIndex(
+        currentItem => 
+          currentItem.id === item.id && 
+          JSON.stringify(currentItem.options) === JSON.stringify(item.options)
+      );
+
+      if (existingItemIndex > -1) {
+        // Update quantity of existing item
+        const newItems = [...currentItems];
+        newItems[existingItemIndex].quantity += item.quantity;
+        toast.success(`${item.name} quantity updated in cart`);
+        return newItems;
       } else {
-        // Add new item
-        toast.success(`${newItem.name} added to cart`);
-        return [...prev, newItem];
+        // Add new item with default options if none provided
+        const newItem = {
+          ...item,
+          options: item.options || {
+            selectedAddons: []
+          }
+        };
+        toast.success(`${item.name} added to cart`);
+        return [...currentItems, newItem];
       }
     });
   };
 
-  // Remove item from cart
   const removeFromCart = (itemId: string) => {
-    setCartItems((prev) => {
-      const itemToRemove = prev.find(item => item.id === itemId);
+    setItems(currentItems => {
+      const itemToRemove = currentItems.find(item => item.id === itemId);
       if (itemToRemove) {
         toast.success(`${itemToRemove.name} removed from cart`);
       }
-      return prev.filter((item) => item.id !== itemId);
+      return currentItems.filter((item) => item.id !== itemId);
     });
   };
 
-  // Update item quantity
   const updateQuantity = (itemId: string, quantity: number) => {
     if (quantity < 1) {
       removeFromCart(itemId);
       return;
     }
     
-    setCartItems((prev) =>
-      prev.map((item) =>
+    setItems(currentItems =>
+      currentItems.map(item =>
         item.id === itemId ? { ...item, quantity } : item
       )
     );
   };
 
-  // Clear cart
   const clearCart = () => {
-    setCartItems([]);
+    setItems([]);
     toast.success('Cart cleared');
   };
 
   return (
     <CartContext.Provider
       value={{
-        cartItems,
+        items,
         addToCart,
         removeFromCart,
         updateQuantity,
         clearCart,
-        subtotal,
-        totalItems,
+        total,
       }}
     >
       {children}
     </CartContext.Provider>
   );
-};
+}
+
+export function useCart() {
+  const context = useContext(CartContext);
+  if (context === undefined) {
+    throw new Error('useCart must be used within a CartProvider');
+  }
+  return context;
+}

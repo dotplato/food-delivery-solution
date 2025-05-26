@@ -5,11 +5,8 @@ export const metadata = {
   description: 'View your order details and track its status',
 };
 
-export async function generateStaticParams() {
-  // Since orders are dynamic and user-specific, we'll return an empty array
-  // This tells Next.js that this is a dynamic route that doesn't need static generation
-  return [];
-}
+// Remove generateStaticParams since we're using dynamic rendering
+export const dynamic = 'force-dynamic';
 
 export default function OrderDetailsPage() {
   return <ClientOrderDetails />;

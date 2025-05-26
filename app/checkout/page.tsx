@@ -18,12 +18,15 @@ const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!
 export default function CheckoutPage() {
   const [step, setStep] = useState<'address' | 'payment'>('address');
   const [pendingOrder, setPendingOrder] = useState<PendingOrder | null>(null);
-  const { cartItems, updateQuantity, removeFromCart, subtotal } = useCart();
+  const { items, updateQuantity, removeFromCart } = useCart();
   const { user } = useAuth();
   const router = useRouter();
   
+  // Calculate subtotal from items
+  const subtotal = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  
   // Redirect if no items in cart
-  if (typeof window !== 'undefined' && cartItems.length === 0) {
+  if (typeof window !== 'undefined' && items.length === 0) {
     router.push('/cart');
   }
 
@@ -32,7 +35,7 @@ export default function CheckoutPage() {
 
   const handleAddressSubmit = (addressData: { fullName: string; phone: string; address: string }) => {
     setPendingOrder({
-      items: cartItems,
+      items,
       delivery_address: addressData.address,
       phone: addressData.phone,
       subtotal,
@@ -74,7 +77,7 @@ export default function CheckoutPage() {
               <Separator className="mb-4" />
               
               <div className="space-y-4 max-h-80 overflow-y-auto">
-                {cartItems.map((item) => (
+                {items.map((item) => (
                   <CartItem
                     key={item.id}
                     item={item}

@@ -17,6 +17,13 @@ const createSupabaseClient = () => {
     auth: {
       persistSession: true,
       autoRefreshToken: true,
+      detectSessionInUrl: true,
+      storageKey: 'supabase.auth.token',
+    },
+    global: {
+      headers: {
+        'x-application-name': 'bhb-bolt-ecom',
+      },
     },
   });
 

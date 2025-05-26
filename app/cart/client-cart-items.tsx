@@ -8,9 +8,9 @@ import { Separator } from '@/components/ui/separator';
 import { CartItem } from '@/components/cart/cart-item';
 
 export function ClientCartItems() {
-  const { cartItems, updateQuantity, removeFromCart, clearCart } = useCart();
+  const { items, updateQuantity, removeFromCart, clearCart } = useCart();
 
-  if (cartItems.length === 0) {
+  if (items.length === 0) {
     return (
       <div className="bg-card border rounded-lg p-8 flex flex-col items-center justify-center text-center h-80">
         <ShoppingCart className="h-12 w-12 text-muted-foreground mb-4" />
@@ -28,7 +28,7 @@ export function ClientCartItems() {
   return (
     <div className="bg-card border rounded-lg p-6">
       <div className="flex justify-between items-center mb-4">
-        <h2 className="text-xl font-semibold">Cart Items ({cartItems.length})</h2>
+        <h2 className="text-xl font-semibold">Cart Items ({items.length})</h2>
         <Button variant="ghost" size="sm" onClick={clearCart}>
           Clear Cart
         </Button>
@@ -37,7 +37,7 @@ export function ClientCartItems() {
       <Separator className="mb-4" />
       
       <div className="space-y-1">
-        {cartItems.map((item) => (
+        {items.map((item) => (
           <CartItem
             key={item.id}
             item={item}

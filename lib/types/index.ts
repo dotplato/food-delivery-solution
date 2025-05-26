@@ -17,14 +17,18 @@ export type MenuItem = {
   available: boolean;
   featured: boolean;
   created_at: string;
+  options?: MenuItemOption[];
+  addons?: MenuItemAddon[];
+  meal_options?: MealOption[];
 };
 
-export type CartItem = {
-  id: string;
-  name: string;
-  price: number;
-  image_url: string | null;
+export type CartItem = MenuItem & {
   quantity: number;
+  options?: {
+    selectedOption?: MenuItemOption;
+    selectedAddons: MenuItemAddon[];
+    selectedMealOptions?: MealOption[];
+  };
 };
 
 export type Order = {
@@ -50,6 +54,7 @@ export type OrderItem = {
   price: number;
   created_at: string;
   menu_item?: MenuItem;
+  options?: OrderItemOption[];
 };
 
 export type Profile = {
@@ -68,4 +73,46 @@ export type PendingOrder = {
   subtotal: number;
   delivery_fee: number;
   total: number;
+};
+
+export type MenuItemOption = {
+  id: string;
+  menu_item_id: string;
+  name: string;
+  description: string | null;
+  price_adjustment: number;
+  is_required: boolean;
+  created_at: string;
+};
+
+export type MenuItemAddon = {
+  id: string;
+  menu_item_id: string;
+  name: string;
+  description: string | null;
+  price_adjustment: number;
+  is_required: boolean;
+  created_at: string;
+};
+
+export type MealOption = {
+  id: string;
+  menu_item_id: string;
+  name: string;
+  description: string | null;
+  price_adjustment: number;
+  created_at: string;
+};
+
+export type OrderItemOption = {
+  id: string;
+  order_item_id: string;
+  option_id: string | null;
+  addon_id: string | null;
+  meal_option_id: string | null;
+  price_adjustment: number;
+  created_at: string;
+  option?: MenuItemOption;
+  addon?: MenuItemAddon;
+  meal_option?: MealOption;
 };

@@ -2,248 +2,170 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { z } from 'zod';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { Loader2, User } from 'lucide-react';
-import { Input } from '@/components/ui/input';
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { Button } from '@/components/ui/button';
-import { Separator } from '@/components/ui/separator';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@/components/ui/form';
-import { useAuth } from '@/context/auth-context';
-import { supabase } from '@/lib/supabase/client';
-import { Profile } from '@/lib/types';
-import { OrderHistory } from '@/components/profile/order-history';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 
-const profileSchema = z.object({
-  fullName: z.string().min(2, { message: 'Full name must be at least 2 characters' }),
-  phone: z.string().min(10, { message: 'Please enter a valid phone number' }).optional().or(z.literal('')),
-  address: z.string().min(5, { message: 'Please enter a valid address' }).optional().or(z.literal('')),
-});
-
 export default function ProfilePage() {
-  const { user, signOut } = useAuth();
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
   const router = useRouter();
-
-  const form = useForm<z.infer<typeof profileSchema>>({
-    resolver: zodResolver(profileSchema),
-    defaultValues: {
-      fullName: '',
-      phone: '',
-      address: '',
-    },
-  });
+  const supabase = createClientComponentClient();
+  const [loading, setLoading] = useState(true);
+  const [profile, setProfile] = useState<{
+    full_name: string;
+    phone: string;
+    address: string;
+  } | null>(null);
 
   useEffect(() => {
-    if (!user) {
-      router.push('/signin?redirect=/profile');
+    const fetchProfile = async () => {
+      try {
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        
+        console.log('Profile Page - Session:', {
+          hasSession: !!session,
+          userId: session?.user?.id,
+          sessionError: sessionError?.message
+        });
+
+        if (sessionError) {
+          console.error('Profile Page - Session error:', sessionError);
+          router.push('/login');
       return;
     }
 
-    fetchProfile();
-  }, [user, router]);
+        if (!session) {
+          console.log('Profile Page - No session found, redirecting to login');
+          router.push('/login');
+          return;
+        }
 
-  async function fetchProfile() {
-    if (!user) return;
-    
-    setLoading(true);
-    try {
-      const { data, error } = await supabase
+        const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('*')
-        .eq('id', user.id)
+          .eq('id', session.user.id)
         .single();
 
-      if (error) throw error;
-      
-      setProfile(data);
-      
-      if (data) {
-        form.reset({
-          fullName: data.full_name || '',
-          phone: data.phone || '',
-          address: data.address || '',
+        console.log('Profile Page - Profile data:', {
+          profile,
+          profileError: profileError?.message
         });
-      }
+
+        if (profileError) {
+          console.error('Profile Page - Error fetching profile:', profileError);
+          toast.error('Failed to load profile');
+          return;
+        }
+
+        setProfile(profile);
     } catch (error) {
-      console.error('Error fetching profile:', error);
+        console.error('Profile Page - Unexpected error:', error);
+        toast.error('An unexpected error occurred');
     } finally {
       setLoading(false);
     }
-  }
+    };
 
-  async function onSubmit(values: z.infer<typeof profileSchema>) {
-    if (!user) return;
-    
-    setSaving(true);
+    fetchProfile();
+  }, [supabase, router]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        console.log('Profile Page - No session found during update');
+        router.push('/login');
+        return;
+      }
+
       const { error } = await supabase
         .from('profiles')
         .update({
-          full_name: values.fullName,
-          phone: values.phone,
-          address: values.address,
+          full_name: profile?.full_name,
+          phone: profile?.phone,
+          address: profile?.address,
           updated_at: new Date().toISOString(),
         })
-        .eq('id', user.id);
+        .eq('id', session.user.id);
 
-      if (error) throw error;
+      console.log('Profile Page - Update result:', {
+        error: error?.message
+      });
+
+      if (error) {
+        console.error('Profile Page - Error updating profile:', error);
+        toast.error('Failed to update profile');
+        return;
+      }
       
       toast.success('Profile updated successfully');
-      fetchProfile();
     } catch (error) {
-      console.error('Error updating profile:', error);
-      toast.error('Failed to update profile');
+      console.error('Profile Page - Unexpected error during update:', error);
+      toast.error('An unexpected error occurred');
     } finally {
-      setSaving(false);
+      setLoading(false);
     }
-  }
+  };
 
-  if (!user) {
-    return null; // Will redirect to signin in useEffect
+  if (loading) {
+    return (
+      <div className="container mx-auto py-10">
+        <Card>
+          <CardHeader>
+            <CardTitle>Loading profile...</CardTitle>
+          </CardHeader>
+        </Card>
+      </div>
+    );
   }
 
   return (
-    <div className="pt-24 pb-16">
-      <div className="container mx-auto px-4">
-        <h1 className="text-3xl font-bold mb-6">My Account</h1>
-        
-        <Tabs defaultValue="profile" className="w-full">
-          <TabsList className="mb-8">
-            <TabsTrigger value="profile">Profile</TabsTrigger>
-            <TabsTrigger value="orders">Orders</TabsTrigger>
-          </TabsList>
-          
-          <TabsContent value="profile">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              <div className="md:col-span-2">
-                {loading ? (
-                  <div className="bg-card border rounded-lg p-8 flex justify-center items-center h-80">
-                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+    <div className="container mx-auto py-10">
+      <Card>
+        <CardHeader>
+          <CardTitle>Profile</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="full_name">Full Name</Label>
+              <Input
+                id="full_name"
+                value={profile?.full_name || ''}
+                onChange={(e) => setProfile(prev => ({ ...prev!, full_name: e.target.value }))}
+                required
+              />
                   </div>
-                ) : (
-                  <div className="bg-card border rounded-lg p-6">
-                    <h2 className="text-xl font-semibold mb-4">Profile Information</h2>
-                    <Separator className="mb-6" />
-                    
-                    <Form {...form}>
-                      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                        <FormField
-                          control={form.control}
-                          name="fullName"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Full Name</FormLabel>
-                              <FormControl>
-                                <Input placeholder="John Doe" {...field} />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        
-                        <FormField
-                          control={form.control}
-                          name="phone"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Phone Number</FormLabel>
-                              <FormControl>
-                                <Input placeholder="(123) 456-7890" {...field} />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        
-                        <FormField
-                          control={form.control}
-                          name="address"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Delivery Address</FormLabel>
-                              <FormControl>
-                                <Input placeholder="123 Main St, City, State 12345" {...field} />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        
-                        <div className="flex justify-end">
-                          <Button 
-                            type="submit" 
-                            disabled={saving}
-                          >
-                            {saving ? (
-                              <>
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                Saving...
-                              </>
-                            ) : (
-                              'Save Changes'
-                            )}
-                          </Button>
-                        </div>
-                      </form>
-                    </Form>
-                  </div>
-                )}
-              </div>
-              
-              <div>
-                <div className="bg-card border rounded-lg p-6">
-                  <div className="flex justify-center mb-4">
-                    <div className="w-24 h-24 rounded-full bg-primary/10 flex items-center justify-center">
-                      <User className="h-12 w-12 text-primary" />
-                    </div>
-                  </div>
-                  
-                  <div className="text-center mb-6">
-                    <h3 className="font-medium text-lg">{profile?.full_name || user.email}</h3>
-                    <p className="text-muted-foreground text-sm">{user.email}</p>
-                  </div>
-                  
-                  <Separator className="mb-6" />
-                  
-                  <div className="space-y-4">
-                    <Button 
-                      variant="outline" 
-                      className="w-full"
-                      onClick={() => router.push('/orders')}
-                    >
-                      View Orders
-                    </Button>
-                    <Button 
-                      variant="outline" 
-                      className="w-full text-destructive hover:text-destructive"
-                      onClick={() => signOut()}
-                    >
-                      Sign Out
-                    </Button>
-                  </div>
-                </div>
-              </div>
+            <div className="space-y-2">
+              <Label htmlFor="phone">Phone</Label>
+              <Input
+                id="phone"
+                value={profile?.phone || ''}
+                onChange={(e) => setProfile(prev => ({ ...prev!, phone: e.target.value }))}
+                required
+              />
             </div>
-          </TabsContent>
-          
-          <TabsContent value="orders">
-            <OrderHistory />
-          </TabsContent>
-        </Tabs>
+            <div className="space-y-2">
+              <Label htmlFor="address">Address</Label>
+              <Input
+                id="address"
+                value={profile?.address || ''}
+                onChange={(e) => setProfile(prev => ({ ...prev!, address: e.target.value }))}
+                required
+              />
       </div>
+            <Button type="submit" disabled={loading}>
+              {loading ? 'Saving...' : 'Save Changes'}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
     </div>
   );
 }
