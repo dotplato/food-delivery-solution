@@ -47,11 +47,8 @@ export default async function RootLayout({
         <AuthProvider>
           <CartProvider>
             <div className="flex min-h-screen flex-col">
-              <Navbar />
-              <main className="flex-grow">
+              {/* Navbar will be rendered by the admin layout for admin pages */}
                 {children}
-              </main>
-              <Footer />
             </div>
             <Toaster position="top-center" />
           </CartProvider>

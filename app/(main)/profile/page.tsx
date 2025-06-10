@@ -32,13 +32,13 @@ export default function ProfilePage() {
 
         if (sessionError) {
           console.error('Profile Page - Session error:', sessionError);
-          router.push('/login');
+          router.push('/signin');
       return;
     }
 
         if (!session) {
           console.log('Profile Page - No session found, redirecting to login');
-          router.push('/login');
+          router.push('/signin');
           return;
         }
 
@@ -80,7 +80,7 @@ export default function ProfilePage() {
       
       if (!session) {
         console.log('Profile Page - No session found during update');
-        router.push('/login');
+        router.push('/signin');
         return;
       }
 

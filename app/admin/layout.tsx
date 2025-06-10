@@ -45,7 +45,7 @@ export default function AdminLayout({
         <div className="fixed inset-y-0 left-0 w-64 bg-background border-r">
           <div className="flex h-16 items-center justify-between px-4">
             <Link href="/admin" className="text-xl font-bold">
-              Admin Dashboard
+              BHB ADMIN
             </Link>
             <Button
               variant="ghost"
@@ -82,8 +82,8 @@ export default function AdminLayout({
       <div className="hidden lg:fixed lg:inset-y-0 lg:flex lg:w-64 lg:flex-col">
         <div className="flex min-h-0 flex-1 flex-col border-r bg-background">
           <div className="flex h-16 items-center px-4">
-            <Link href="/admin" className="text-xl font-bold">
-              Admin Dashboard
+            <Link href="/admin" className="text-xl font-bold text-red-500">
+              BHB ADMIN
             </Link>
           </div>
           <nav className="flex-1 space-y-1 px-2">

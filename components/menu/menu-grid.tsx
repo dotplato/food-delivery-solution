@@ -16,10 +16,10 @@ export function MenuGrid() {
 
   useEffect(() => {
     async function fetchCategories() {
-      const { data, error } = await supabase
-        .from('categories')
-        .select('*')
-        .order('name');
+        const { data, error } = await supabase
+          .from('categories')
+          .select('*')
+          .order('name');
 
       if (error) {
         console.error('Error fetching categories:', error);
@@ -31,7 +31,7 @@ export function MenuGrid() {
 
     async function fetchMenuItems() {
       const { data: menuItemsData, error: menuItemsError } = await supabase
-        .from('menu_items')
+          .from('menu_items')
         .select(`
           *,
           options:menu_item_options(*),
@@ -39,7 +39,7 @@ export function MenuGrid() {
           meal_options:meal_options(*)
         `)
         .eq('available', true)
-        .order('name');
+          .order('name');
 
       if (menuItemsError) {
         console.error('Error fetching menu items:', menuItemsError);
@@ -55,8 +55,8 @@ export function MenuGrid() {
       }));
 
       setMenuItems(typedMenuItems);
-      setLoading(false);
-    }
+        setLoading(false);
+      }
 
     fetchCategories();
     fetchMenuItems();
@@ -89,7 +89,7 @@ export function MenuGrid() {
             {category.name}
           </Button>
         ))}
-      </div>
+        </div>
 
       {/* Menu Items Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -108,7 +108,7 @@ function MenuSkeleton() {
       <div className="flex gap-2">
         {[1, 2, 3, 4].map(i => (
           <Skeleton key={i} className="h-10 w-24" />
-        ))}
+          ))}
       </div>
 
       {/* Menu Items Grid Skeleton */}

@@ -1,30 +1,16 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { MenuItem, MenuItemOption, MenuItemAddon, MealOption } from '@/lib/types';
+import { CartItem, MenuItem, MenuItemOption, MenuItemAddon, MealOption } from '@/lib/types';
 import { toast } from 'sonner';
-
-interface CartItem {
-  id: string;
-  name: string;
-  description: string | null;
-  price: number;
-  image_url: string | null;
-  category_id: string | null;
-  available: boolean;
-  featured: boolean;
-  created_at: string;
-  quantity: number;
-  options?: {
-    selectedOption?: MenuItemOption;
-    selectedAddons: MenuItemAddon[];
-    selectedMealOptions?: MealOption[];
-  };
-}
 
 interface CartContextType {
   items: CartItem[];
-  addToCart: (item: CartItem) => void;
+  addToCart: (item: MenuItem, options?: {
+    selectedOption?: MenuItemOption;
+    selectedAddons: MenuItemAddon[];
+    selectedMealOptions?: MealOption[];
+  }) => void;
   removeFromCart: (itemId: string) => void;
   updateQuantity: (itemId: string, quantity: number) => void;
   clearCart: () => void;
@@ -56,26 +42,31 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     setTotal(newTotal);
   }, [items]);
 
-  const addToCart = (item: CartItem) => {
+  const addToCart = (item: MenuItem, options?: {
+    selectedOption?: MenuItemOption;
+    selectedAddons: MenuItemAddon[];
+    selectedMealOptions?: MealOption[];
+  }) => {
     setItems(currentItems => {
       // Check if item with same options already exists
       const existingItemIndex = currentItems.findIndex(
         currentItem => 
           currentItem.id === item.id && 
-          JSON.stringify(currentItem.options) === JSON.stringify(item.options)
+          JSON.stringify(currentItem.options) === JSON.stringify(options)
       );
-
+      
       if (existingItemIndex > -1) {
         // Update quantity of existing item
         const newItems = [...currentItems];
-        newItems[existingItemIndex].quantity += item.quantity;
+        newItems[existingItemIndex].quantity += 1;
         toast.success(`${item.name} quantity updated in cart`);
         return newItems;
       } else {
-        // Add new item with default options if none provided
-        const newItem = {
+        // Add new item
+        const newItem: CartItem = {
           ...item,
-          options: item.options || {
+          quantity: 1,
+          options: options || {
             selectedAddons: []
           }
         };

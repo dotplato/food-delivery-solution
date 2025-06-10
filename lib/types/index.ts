@@ -68,8 +68,13 @@ export type Profile = {
 
 export type PendingOrder = {
   items: CartItem[];
+  order_type: 'delivery' | 'pickup';
   delivery_address?: string;
   phone?: string;
+  location?: {
+    lat: number;
+    lng: number;
+  };
   subtotal: number;
   delivery_fee: number;
   total: number;

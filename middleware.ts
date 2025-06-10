@@ -17,7 +17,7 @@ export async function middleware(request: NextRequest) {
 
     if (!session) {
       console.log('⛔ No session - redirecting to login');
-      return NextResponse.redirect(new URL('/login', request.url));
+      return NextResponse.redirect(new URL('/signin', request.url));
     }
 
     const { data: profile, error: profileError } = await supabase
@@ -33,7 +33,7 @@ export async function middleware(request: NextRequest) {
 
     if (profileError || !profile) {
       console.log('⛔ No profile - redirecting to login');
-      return NextResponse.redirect(new URL('/login', request.url));
+      return NextResponse.redirect(new URL('/signin', request.url));
     }
 
     if (!profile.is_admin) {
@@ -45,7 +45,7 @@ export async function middleware(request: NextRequest) {
     return res;
   } catch (error) {
     console.error('❌ Middleware error:', error);
-    return NextResponse.redirect(new URL('/login', request.url));
+    return NextResponse.redirect(new URL('/signin', request.url));
   }
 }
 
