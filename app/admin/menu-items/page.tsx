@@ -11,6 +11,7 @@ import { MenuItem } from '@/lib/types';
 import type { Database } from '@/lib/types/database.types';
 import type { Category } from '@/lib/types';
 import { MenuItemDialog } from './menu-item-dialog';
+import Loader from '@/components/ui/loader';
 
 const columns = [
   {
@@ -217,10 +218,14 @@ export default function MenuItemsPage() {
         </select>
       </div>
 
-      <DataTable
-        columns={columns}
-        data={filteredMenuItems}
-      />
+      {loading ? (
+        <Loader />
+      ) : (
+        <DataTable
+          columns={columns}
+          data={filteredMenuItems}
+        />
+      )}
 
       <MenuItemDialog
         open={dialogOpen}

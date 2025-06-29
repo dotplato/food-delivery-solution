@@ -12,7 +12,7 @@ export function ClientCartItems() {
 
   if (items.length === 0) {
     return (
-      <div className="bg-card border rounded-lg p-8 flex flex-col items-center justify-center text-center h-80">
+      <div className="bg-card border rounded-2xl p-8 flex flex-col items-center justify-center text-center h-80">
         <ShoppingCart className="h-12 w-12 text-muted-foreground mb-4" />
         <h3 className="text-xl font-medium mb-2">Your cart is empty</h3>
         <p className="text-muted-foreground mb-6">

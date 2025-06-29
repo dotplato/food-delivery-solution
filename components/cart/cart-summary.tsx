@@ -34,7 +34,7 @@ export function CartSummary({ showCheckoutButton = true }: CartSummaryProps) {
   };
 
   return (
-    <div className="bg-card border rounded-lg p-6">
+    <div className="bg-card border rounded-2xl p-6">
       <h3 className="font-bold text-lg mb-4">Order Summary</h3>
       
       <div className="space-y-3">
@@ -58,8 +58,7 @@ export function CartSummary({ showCheckoutButton = true }: CartSummaryProps) {
       
       {showCheckoutButton && (
         <Button 
-          className="w-full mt-6 bg-red-600 hover:bg-red-700 text-white"
-          size="lg"
+          className="w-full mt-6 bg-red-700 hover:bg-red-600 text-white"
           disabled={items.length === 0}
           onClick={handleCheckout}
         >

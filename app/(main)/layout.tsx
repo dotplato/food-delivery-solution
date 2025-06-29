@@ -12,6 +12,8 @@ export default function MainLayout({
       <main className="flex-grow">
         {children}
       </main>
+      <hr className="border-gray-400/20 mt-8" />
+
       <Footer />
     </>
   );

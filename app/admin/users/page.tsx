@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import Loader from '@/components/ui/loader';
 
 export default function UsersAdminPage() {
   const [users, setUsers] = useState<any[]>([]);
@@ -27,7 +28,7 @@ export default function UsersAdminPage() {
         </CardHeader>
         <CardContent>
           {loading ? (
-            <div>Loading...</div>
+            <Loader />
           ) : (
             <table className="w-full text-sm">
               <thead>

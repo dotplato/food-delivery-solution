@@ -4,6 +4,7 @@ import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { supabase } from "@/lib/supabase/client";
+import Loader from '@/components/ui/loader';
 
 export default function OrdersAdminPage() {
   const [orders, setOrders] = useState<any[]>([]);
@@ -33,7 +34,7 @@ export default function OrdersAdminPage() {
       <Card>
         <CardContent>
           {loading ? (
-            <div>Loading...</div>
+            <Loader />
           ) : (
             <table className="w-full text-sm">
               <thead>

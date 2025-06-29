@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/lib/supabase/client";
 import type { Category } from "@/lib/types";
+import Loader from '@/components/ui/loader';
 
 // CategoryDialog component (inline for now)
 function CategoryDialog({ open, onOpenChange, category, onSave }: {
@@ -139,7 +140,8 @@ export default function CategoriesAdminPage() {
       <Card>
         <CardContent>
           {loading ? (
-            <div>Loading...</div>
+            <Loader />
+
           ) : (
             <table className="w-full text-sm">
               <thead>

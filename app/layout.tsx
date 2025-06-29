@@ -8,6 +8,7 @@ import { AuthProvider } from '@/context/auth-context';
 import { CartProvider } from '@/context/cart-context';
 import { createServerComponentClient } from '@supabase/auth-helpers-nextjs';
 import { cookies } from 'next/headers';
+import Loader from '@/components/ui/loader';
 
 const inter = Inter({ subsets: ['latin'] });
 

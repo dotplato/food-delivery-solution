@@ -9,6 +9,7 @@ import {
   Users,
   TrendingUp,
 } from 'lucide-react';
+import Loader from '@/components/ui/loader';
 
 export default function AdminDashboard() {
   const [stats, setStats] = useState({
