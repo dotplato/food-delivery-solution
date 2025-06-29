@@ -47,6 +47,7 @@ export default async function RootLayout({
       <body className={inter.className}>
         <AuthProvider>
           <CartProvider>
+            
             <div className="flex min-h-screen flex-col">
               {/* Navbar will be rendered by the admin layout for admin pages */}
                 {children}

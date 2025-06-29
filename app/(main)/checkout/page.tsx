@@ -16,6 +16,8 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
+import { LocationDialog } from '@/components/location/LocationDialog';
+import { useRef } from 'react';
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
 
@@ -23,11 +25,22 @@ type OrderType = 'delivery' | 'pickup';
 
 export default function CheckoutPage() {
   const [step, setStep] = useState<'type' | 'address' | 'payment'>('type');
-  const [orderType, setOrderType] = useState<OrderType>('delivery');
+  const [orderType, setOrderType] = useState<OrderType>(() => {
+    if (typeof window !== 'undefined') {
+      return (localStorage.getItem('order_type') as OrderType) || 'delivery';
+    }
+    return 'delivery';
+  });
   const [pendingOrder, setPendingOrder] = useState<PendingOrder | null>(null);
+  const [locationDialogOpen, setLocationDialogOpen] = useState(false);
+  const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: number; address: string } | null>(null);
   const { items, updateQuantity, removeFromCart } = useCart();
   const { user } = useAuth();
   const router = useRouter();
+  const [fullName, setFullName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [message, setMessage] = useState('');
+  const [addressError, setAddressError] = useState('');
 
   // Calculate subtotal from items
   const subtotal = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
@@ -42,7 +55,6 @@ export default function CheckoutPage() {
 
   const handleOrderTypeSubmit = () => {
     if (orderType === 'pickup') {
-      // For pickup, skip address step and go directly to payment
       setPendingOrder({
         items,
         order_type: 'pickup',
@@ -52,21 +64,39 @@ export default function CheckoutPage() {
       });
       setStep('payment');
     } else {
+      setLocationDialogOpen(true);
       setStep('address');
     }
   };
 
-  const handleAddressSubmit = (addressData: { fullName: string; phone: string; address: string }) => {
-    // You can add your own address/location validation here
+  const handleLocationSelect = (loc: { lat: number; lng: number; address: string }) => {
+    setSelectedLocation(loc);
+    setLocationDialogOpen(false);
+    setAddressError('');
+  };
+
+  const handleAddressFormSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedLocation) {
+      setAddressError('Please select a delivery address.');
+      return;
+    }
+    if (!fullName || !phone) {
+      setAddressError('Full Name and Phone are required.');
+      return;
+    }
     setPendingOrder({
       items,
       order_type: 'delivery',
-      delivery_address: addressData.address,
-      phone: addressData.phone,
+      delivery_address: selectedLocation.address,
+      location: { lat: selectedLocation.lat, lng: selectedLocation.lng },
+      phone,
       subtotal,
       delivery_fee: deliveryFee,
       total,
-    });
+      message,
+      full_name: fullName,
+    } as any); // 'as any' to allow extra fields for now
     setStep('payment');
   };
 
@@ -108,8 +138,63 @@ export default function CheckoutPage() {
               <div className="bg-card border rounded-lg p-6">
                 <h2 className="text-xl font-semibold mb-4">Delivery Information</h2>
                 <Separator className="mb-6" />
-                {/* PLACEHOLDER: Add your own address/location selection UI here */}
-                <AddressForm onSubmit={handleAddressSubmit} />
+                <form onSubmit={handleAddressFormSubmit} className="space-y-4">
+                  <div>
+                    <label className="block font-medium mb-1">Full Name</label>
+                    <input
+                      type="text"
+                      className="w-full px-3 py-2 rounded border border-gray-300"
+                      value={fullName}
+                      onChange={e => setFullName(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-medium mb-1">Phone Number</label>
+                    <input
+                      type="tel"
+                      className="w-full px-3 py-2 rounded border border-gray-300"
+                      value={phone}
+                      onChange={e => setPhone(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-medium mb-1">Message (Optional)</label>
+                    <textarea
+                      className="w-full px-3 py-2 rounded border border-gray-300"
+                      value={message}
+                      onChange={e => setMessage(e.target.value)}
+                      rows={2}
+                    />
+                  </div>
+                  <div>
+                    <button
+                      type="button"
+                      className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded"
+                      onClick={() => setLocationDialogOpen(true)}
+                    >
+                      {selectedLocation ? 'Change Address' : 'Select Address'}
+                    </button>
+                  </div>
+                  {selectedLocation && (
+                    <div className="bg-gray-100 border rounded p-3 text-sm">
+                      <div><b>Selected Address:</b> {selectedLocation.address}</div>
+                    </div>
+                  )}
+                  {addressError && <div className="text-red-600 text-sm">{addressError}</div>}
+                  <button
+                    type="submit"
+                    className="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-3 rounded-lg mt-2 transition"
+                  >
+                    Continue to Payment
+                  </button>
+                </form>
+                <LocationDialog
+                  open={locationDialogOpen}
+                  onClose={() => setLocationDialogOpen(false)}
+                  onSelect={handleLocationSelect}
+                />
               </div>
             )}
             

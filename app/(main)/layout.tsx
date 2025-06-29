@@ -1,5 +1,6 @@
 import { Navbar } from '@/components/layout/navbar';
 import { Footer } from '@/components/layout/footer';
+import { OrderTypeDialogProvider } from "@/components/location/OrderTypeDialogProvider";
 
 export default function MainLayout({
   children,
@@ -7,14 +8,12 @@ export default function MainLayout({
   children: React.ReactNode;
 }) {
   return (
-    <>
+    <OrderTypeDialogProvider>
       <Navbar />
       <main className="flex-grow">
         {children}
       </main>
-      <hr className="border-gray-400/20 mt-8" />
-
       <Footer />
-    </>
+    </OrderTypeDialogProvider>
   );
 } 

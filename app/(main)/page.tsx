@@ -1,7 +1,6 @@
 import { HeroSlider } from '@/components/home/hero-slider';
 import { CategoryCarousel } from '@/components/home/category-carousel';
 import { DownloadAppSection } from '@/components/home/DownloadAppSection';
-import { ArrowRight } from 'lucide-react';
 import Image from 'next/image';
 
 export default function Home() {
