@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Separator } from '@/components/ui/separator';
 import { CartItem } from '@/components/cart/cart-item';
@@ -17,11 +17,13 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { LocationDialog } from '@/components/location/LocationDialog';
-import { useRef } from 'react';
+import { Loader2 } from 'lucide-react';
+import { supabase } from '@/lib/supabase/client';
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
 
 type OrderType = 'delivery' | 'pickup';
+type PaymentMethod = 'card' | 'cod';
 
 export default function CheckoutPage() {
   const [step, setStep] = useState<'type' | 'address' | 'payment'>('type');
@@ -34,21 +36,25 @@ export default function CheckoutPage() {
   const [pendingOrder, setPendingOrder] = useState<PendingOrder | null>(null);
   const [locationDialogOpen, setLocationDialogOpen] = useState(false);
   const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: number; address: string } | null>(null);
-  const { items, updateQuantity, removeFromCart } = useCart();
+  const { items, updateQuantity, removeFromCart, clearCart } = useCart();
   const { user } = useAuth();
   const router = useRouter();
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
   const [message, setMessage] = useState('');
   const [addressError, setAddressError] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('card');
+  const [isProcessingCod, setIsProcessingCod] = useState(false);
 
   // Calculate subtotal from items
   const subtotal = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
   
   // Redirect if no items in cart
-  if (typeof window !== 'undefined' && items.length === 0) {
-    router.push('/cart');
-  }
+  useEffect(() => {
+    if (typeof window !== 'undefined' && items.length === 0 && step !== 'type') {
+      router.push('/cart');
+    }
+  }, [items, router, step]);
 
   const deliveryFee = 3.99;
   const total = orderType === 'delivery' ? subtotal + deliveryFee : subtotal;
@@ -98,6 +104,58 @@ export default function CheckoutPage() {
       full_name: fullName,
     } as any); // 'as any' to allow extra fields for now
     setStep('payment');
+  };
+
+  const handleCodOrder = async () => {
+    if (!pendingOrder) return;
+    setIsProcessingCod(true);
+
+    try {
+      const orderPayload: any = {
+        total: pendingOrder.total,
+        delivery_address: pendingOrder.delivery_address,
+        delivery_fee: pendingOrder.delivery_fee,
+        phone: pendingOrder.phone,
+        full_name: pendingOrder.full_name,
+        payment_intent_id: null,
+        payment_status: "cash_on_delivery",
+        status: "pending",
+      };
+
+      if (user?.id) {
+        orderPayload.user_id = user.id;
+      }
+
+      const { data: orderData, error: orderError } = await supabase
+        .from("orders")
+        .insert(orderPayload)
+        .select()
+        .single();
+
+      if (orderError) throw orderError;
+
+      const orderItems = pendingOrder.items.map((item) => ({
+        order_id: orderData.id,
+        menu_item_id: item.id,
+        quantity: item.quantity,
+        price: item.price,
+      }));
+
+      const { error: itemsError } = await supabase
+        .from("order_items")
+        .insert(orderItems);
+
+      if (itemsError) throw itemsError;
+
+      toast.success("Order placed successfully!");
+      clearCart();
+      router.push("/order-success");
+    } catch (error: any) {
+      toast.error("Failed to create order. Please try again.");
+      console.error("COD Order Error:", error);
+    } finally {
+      setIsProcessingCod(false);
+    }
   };
 
   return (
@@ -202,9 +260,44 @@ export default function CheckoutPage() {
               <div className="bg-card border rounded-lg p-6">
                 <h2 className="text-xl font-semibold mb-4">Payment</h2>
                 <Separator className="mb-6" />
-                <Elements stripe={stripePromise}>
-                  <PaymentForm pendingOrder={pendingOrder} />
-                </Elements>
+                <RadioGroup
+                  value={paymentMethod}
+                  onValueChange={(value) => setPaymentMethod(value as PaymentMethod)}
+                  className="mb-6 space-y-2"
+                >
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="card" id="card" />
+                    <Label htmlFor="card">Credit / Debit Card</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="cod" id="cod" />
+                    <Label htmlFor="cod">Cash on Delivery</Label>
+                  </div>
+                </RadioGroup>
+
+                <Separator className="mb-6" />
+
+                {paymentMethod === "card" ? (
+                  <Elements stripe={stripePromise}>
+                    <PaymentForm pendingOrder={pendingOrder} />
+                  </Elements>
+                ) : (
+                  <div>
+                    <p className="text-muted-foreground mb-4">
+                      You will pay in cash upon delivery.
+                    </p>
+                    <Button
+                      className="w-full"
+                      onClick={handleCodOrder}
+                      disabled={isProcessingCod}
+                    >
+                      {isProcessingCod ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : null}
+                      Confirm Order
+                    </Button>
+                  </div>
+                )}
               </div>
             )}
           </div>

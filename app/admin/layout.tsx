@@ -6,22 +6,23 @@ import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import {
-  LayoutDashboard,
   Package,
   ShoppingCart,
-  Users,
-  Tag,
-  Menu,
   X,
+  BarChart,
+  Home,
+  ClipboardList
 } from 'lucide-react';
+import { Toaster } from "@/components/ui/sonner";
+import { AuthProvider } from "@/context/auth-context";
+import { NewOrderNotifier } from "./NewOrderNotifier";
 
 const navigation = [
-  { name: 'Dashboard', href: '/admin', icon: LayoutDashboard },
-  { name: 'Menu Items', href: '/admin/menu-items', icon: Package },
-  { name: 'Categories', href: '/admin/categories', icon: Menu },
-  { name: 'Orders', href: '/admin/orders', icon: ShoppingCart },
-  { name: 'Users', href: '/admin/users', icon: Users },
-  { name: 'Discounts', href: '/admin/discounts', icon: Tag },
+  { name: 'Dashboard', href: '/admin', icon: Home },
+  { name: 'Products', href: '/admin/menu-items', icon: Package },
+  { name: 'Categories', href: '/admin/categories', icon: ShoppingCart },
+  { name: 'Orders', href: '/admin/orders', icon: ClipboardList },
+  { name: 'Analytics', href: '/admin/analytics', icon: BarChart },
 ];
 
 export default function AdminLayout({
@@ -30,14 +31,32 @@ export default function AdminLayout({
   children: React.ReactNode;
 }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  return (
+    <AuthProvider>
+      <div className="flex gap-0 min-h-screen relative">
+        <div className="lg:w-64 flex-shrink-0">
+        <Sidebar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
+        </div>
+        <main className="flex-1 p-8 ">
+          <NewOrderNotifier />
+          {children}
+        </main>
+        <Toaster />
+      </div>
+    </AuthProvider>
+  );
+}
+
+function Sidebar({ sidebarOpen, setSidebarOpen }: { sidebarOpen: boolean; setSidebarOpen: (open: boolean) => void; }) {
   const pathname = usePathname();
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="h-screen sticky top-0 border-r bg-background  ">
       {/* Mobile sidebar */}
       <div
         className={cn(
-          'fixed inset-0 z-50 lg:hidden',
+          'fixed inset-0 z-50 md:hidden',
           sidebarOpen ? 'block' : 'hidden'
         )}
       >
@@ -63,7 +82,7 @@ export default function AdminLayout({
                   key={item.name}
                   href={item.href}
                   className={cn(
-                    'flex items-center px-2 py-2 text-sm font-medium rounded-md',
+                    'flex items-center px-2 py-6 text-sm font-medium rounded-xl',
                     isActive
                       ? 'bg-primary text-primary-foreground'
                       : 'text-muted-foreground hover:bg-muted hover:text-foreground'
@@ -79,8 +98,8 @@ export default function AdminLayout({
       </div>
 
       {/* Desktop sidebar */}
-      <div className="hidden lg:fixed lg:inset-y-0 lg:flex lg:w-64 lg:flex-col">
-        <div className="flex min-h-0 flex-1 flex-col border-r bg-background">
+      <div className="  lg:inset-y-0 lg:flex lg:w-full lg:h-full lg:flex-col">
+        <div className="flex min-h-0 flex-1 flex-col ">
           <div className="flex h-16 items-center px-4">
             <Link href="/admin" className="text-xl font-bold text-red-500">
               BHB ADMIN
@@ -94,7 +113,7 @@ export default function AdminLayout({
                   key={item.name}
                   href={item.href}
                   className={cn(
-                    'flex items-center px-2 py-2 text-sm font-medium rounded-md',
+                    'flex items-center px-3 py-4 text-sm font-medium rounded-xl',
                     isActive
                       ? 'bg-primary text-primary-foreground'
                       : 'text-muted-foreground hover:bg-muted hover:text-foreground'
@@ -109,26 +128,7 @@ export default function AdminLayout({
         </div>
       </div>
 
-      {/* Main content */}
-      <div className="lg:pl-64">
-        <div className="sticky top-0 z-40 flex h-16 shrink-0 items-center gap-x-4 border-b bg-background px-4 shadow-sm sm:gap-x-6 sm:px-6 lg:px-8">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="lg:hidden"
-            onClick={() => setSidebarOpen(true)}
-          >
-            <Menu className="h-6 w-6" />
-          </Button>
-          <div className="flex flex-1 gap-x-4 self-stretch lg:gap-x-6">
-            <div className="flex-1" />
-          </div>
-        </div>
-
-        <main className="py-10">
-          <div className="px-4 sm:px-6 lg:px-8">{children}</div>
-        </main>
-      </div>
+ 
     </div>
   );
 } 

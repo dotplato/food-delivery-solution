@@ -39,6 +39,7 @@ export type Order = {
   delivery_address: string | null;
   delivery_fee: number;
   phone: string | null;
+  full_name?: string | null;
   payment_intent_id: string | null;
   payment_status: string;
   created_at: string;
@@ -71,6 +72,7 @@ export type PendingOrder = {
   order_type: 'delivery' | 'pickup';
   delivery_address?: string;
   phone?: string;
+  full_name?: string;
   location?: {
     lat: number;
     lng: number;

@@ -81,6 +81,15 @@ CREATE POLICY "Users can insert their own order item options"
     AND o.user_id = auth.uid()
   ));
 
+CREATE POLICY "Admins can view all order item options"
+  ON order_item_options FOR SELECT
+  USING (
+    EXISTS (
+      SELECT 1 FROM profiles
+      WHERE profiles.id = auth.uid() AND profiles.role = 'admin'
+    )
+  );
+
 -- Insert some sample options for burgers
 INSERT INTO menu_item_options (menu_item_id, name, description, price_adjustment, is_required)
 SELECT 

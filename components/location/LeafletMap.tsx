@@ -4,6 +4,13 @@ import L, { LeafletMouseEvent } from "leaflet";
 import { useEffect } from "react";
 import "leaflet/dist/leaflet.css";
 
+const customIcon = new L.Icon({
+  iconUrl: '/images/pin.png',
+  iconSize: [32, 32],
+  iconAnchor: [16, 32],
+  popupAnchor: [0, -32],
+});
+
 const DEFAULT_POSITION: [number, number] = [37.7749, -122.4194];
 
 function LocationMarker({ position, setPosition }: { position: [number, number] | null, setPosition: (pos: [number, number]) => void }) {
@@ -24,6 +31,7 @@ function LocationMarker({ position, setPosition }: { position: [number, number] 
     <Marker
       position={position}
       draggable={true}
+      icon={customIcon}
       eventHandlers={{
         dragend: (e) => {
           const marker = e.target;

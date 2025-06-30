@@ -100,8 +100,9 @@ export function PaymentForm({ pendingOrder }: PaymentFormProps) {
           delivery_address: pendingOrder.delivery_address,
           delivery_fee: pendingOrder.delivery_fee,
           phone: pendingOrder.phone,
+          full_name: pendingOrder.full_name,
           payment_intent_id: paymentIntentId,
-          payment_status: 'completed',
+          payment_status: 'paid',
           status: 'pending',
         })
         .select()
