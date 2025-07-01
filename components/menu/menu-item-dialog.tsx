@@ -6,11 +6,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
-import type { MenuItem, MenuItemOption, MenuItemAddon, MealOption } from '@/lib/types';
+import { Checkbox } from '@/components/ui/checkbox';
+import type { MenuItem, MenuItemOption, MenuItemAddon, MealOption, Category } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
 interface MenuItemDialogProps {
   item: MenuItem;
+  category?: Category;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onAddToCart: (options: {
@@ -20,10 +22,13 @@ interface MenuItemDialogProps {
   }) => void;
 }
 
-export function MenuItemDialog({ item, open, onOpenChange, onAddToCart }: MenuItemDialogProps) {
+export function MenuItemDialog({ item, category, open, onOpenChange, onAddToCart }: MenuItemDialogProps) {
   const [selectedOption, setSelectedOption] = useState<MenuItemOption | null>(null);
   const [selectedAddons, setSelectedAddons] = useState<MenuItemAddon[]>([]);
   const [selectedMealOptions, setSelectedMealOptions] = useState<MealOption[]>([]);
+  const [selectedStyle, setSelectedStyle] = useState<'own' | 'meal'>('own');
+
+  const isBurger = category?.slug === 'burgers';
 
   const handleAddonChange = (addon: MenuItemAddon, checked: boolean) => {
     if (checked) {
@@ -44,33 +49,38 @@ export function MenuItemDialog({ item, open, onOpenChange, onAddToCart }: MenuIt
   const calculateTotal = () => {
     let total = item.price;
     
+    if (isBurger && selectedStyle === 'meal') {
+      selectedMealOptions.forEach(option => {
+        total += option.price_adjustment;
+      });
+    }
+    
+    if (isBurger) {
+      selectedAddons.forEach(addon => {
+        total += addon.price_adjustment;
+      });
+    }
+    
     if (selectedOption) {
       total += selectedOption.price_adjustment;
     }
-    
-    selectedAddons.forEach(addon => {
-      total += addon.price_adjustment;
-    });
-    
-    selectedMealOptions.forEach(option => {
-      total += option.price_adjustment;
-    });
     
     return total;
   };
 
   const handleAddToCart = () => {
     onAddToCart({
-      selectedOption: selectedOption || undefined,
-      selectedAddons,
-      selectedMealOptions: selectedMealOptions.length > 0 ? selectedMealOptions : undefined,
+      selectedOption: undefined,
+      selectedAddons: isBurger ? selectedAddons : [],
+      selectedMealOptions: isBurger && selectedStyle === 'meal' && selectedMealOptions.length > 0 ? selectedMealOptions : undefined,
     });
     onOpenChange(false);
   };
 
-  const requiredOptions = item.options?.filter(opt => opt.is_required) || [];
-  const optionalAddons = item.addons?.filter(addon => !addon.is_required) || [];
+  // For burgers, show all meal_options and all addons
   const requiredAddons = item.addons?.filter(addon => addon.is_required) || [];
+  const optionalAddons = item.addons?.filter(addon => !addon.is_required) || [];
+  const isAddToCartDisabled = isBurger && requiredAddons.length > 0 && selectedAddons.filter(addon => addon.is_required).length === 0;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -99,128 +109,94 @@ export function MenuItemDialog({ item, open, onOpenChange, onAddToCart }: MenuIt
           <div className="space-y-6">
             <p className="text-muted-foreground">{item.description}</p>
 
-            {/* Required Options */}
-            {requiredOptions.length > 0 && (
+            {/* Burger Style Selection */}
+            {isBurger && (
               <div className="space-y-4">
-                <h3 className="font-semibold">Required Options</h3>
+                <h3 className="font-semibold">Choose Style</h3>
                 <RadioGroup
-                  value={selectedOption?.id}
-                  onValueChange={(value) => {
-                    const option = requiredOptions.find(opt => opt.id === value);
-                    setSelectedOption(option || null);
-                  }}
+                  value={selectedStyle}
+                  onValueChange={val => setSelectedStyle(val as 'own' | 'meal')}
                   className="space-y-2"
                 >
-                  {requiredOptions.map((option) => (
-                    <div key={option.id} className="flex items-center space-x-2">
-                      <RadioGroupItem value={option.id} id={option.id} />
-                      <Label htmlFor={option.id} className="flex-grow">
-                        <div className="flex justify-between">
-                          <span>{option.name}</span>
-                          {option.price_adjustment > 0 && (
-                            <span className="text-muted-foreground">
-                              +${option.price_adjustment.toFixed(2)}
-                            </span>
-                          )}
-                        </div>
-                        {option.description && (
-                          <p className="text-sm text-muted-foreground">{option.description}</p>
-                        )}
-                      </Label>
-                    </div>
-                  ))}
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="own" id="own" />
+                    <Label htmlFor="own">On its Own</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="meal" id="meal" />
+                    <Label htmlFor="meal">Make it a Meal</Label>
+                  </div>
                 </RadioGroup>
               </div>
             )}
 
-            {/* Required Addons (Sauces) */}
-            {requiredAddons.length > 0 && (
-              <div className="space-y-4">
-                <h3 className="font-semibold">Required Addons</h3>
-                <div className="space-y-2">
-                  {requiredAddons.map((addon) => (
-                    <div key={addon.id} className="flex items-center space-x-2">
-                      <RadioGroup
-                        value={selectedAddons.find(a => a.id === addon.id)?.id}
-                        onValueChange={(value) => handleAddonChange(addon, value === addon.id)}
-                      >
-                        <RadioGroupItem value={addon.id} id={addon.id} />
-                      </RadioGroup>
-                      <Label htmlFor={addon.id} className="flex-grow">
-                        <div className="flex justify-between">
-                          <span>{addon.name}</span>
-                          {addon.price_adjustment > 0 && (
-                            <span className="text-muted-foreground">
-                              +${addon.price_adjustment.toFixed(2)}
-                            </span>
-                          )}
-                        </div>
-                        {addon.description && (
-                          <p className="text-sm text-muted-foreground">{addon.description}</p>
-                        )}
-                      </Label>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Optional Addons */}
-            {optionalAddons.length > 0 && (
-              <div className="space-y-4">
-                <h3 className="font-semibold">Optional Addons</h3>
-                <div className="space-y-2">
-                  {optionalAddons.map((addon) => (
-                    <div key={addon.id} className="flex items-center space-x-2">
-                      <RadioGroup
-                        value={selectedAddons.find(a => a.id === addon.id)?.id}
-                        onValueChange={(value) => handleAddonChange(addon, value === addon.id)}
-                      >
-                        <RadioGroupItem value={addon.id} id={addon.id} />
-                      </RadioGroup>
-                      <Label htmlFor={addon.id} className="flex-grow">
-                        <div className="flex justify-between">
-                          <span>{addon.name}</span>
-                          {addon.price_adjustment > 0 && (
-                            <span className="text-muted-foreground">
-                              +${addon.price_adjustment.toFixed(2)}
-                            </span>
-                          )}
-                        </div>
-                        {addon.description && (
-                          <p className="text-sm text-muted-foreground">{addon.description}</p>
-                        )}
-                      </Label>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Meal Options (shown only when "Make it a Meal" is selected) */}
-            {selectedOption?.name === 'Make it a Meal' && item.meal_options && item.meal_options.length > 0 && (
+            {/* Meal Options (for burgers, show all meal_options) */}
+            {isBurger && item.meal_options && item.meal_options.length > 0 && (
               <div className="space-y-4">
                 <h3 className="font-semibold">Meal Options</h3>
                 <div className="space-y-2">
                   {item.meal_options.map((option) => (
                     <div key={option.id} className="flex items-center space-x-2">
-                      <RadioGroup
-                        value={selectedMealOptions.find(o => o.id === option.id)?.id}
-                        onValueChange={(value) => handleMealOptionChange(option, value === option.id)}
-                      >
-                        <RadioGroupItem value={option.id} id={option.id} />
-                      </RadioGroup>
-                      <Label htmlFor={option.id} className="flex-grow">
-                        <div className="flex justify-between">
-                          <span>{option.name}</span>
-                          {option.price_adjustment > 0 && (
-                            <span className="text-muted-foreground">
-                              +${option.price_adjustment.toFixed(2)}
-                            </span>
-                          )}
-                        </div>
-                        {option.description && (
-                          <p className="text-sm text-muted-foreground">{option.description}</p>
+                      <Checkbox
+                        checked={selectedMealOptions.some(o => o.id === option.id)}
+                        onCheckedChange={(checked) => handleMealOptionChange(option, checked as boolean)}
+                      />
+                      <Label>
+                        {option.name}
+                        {option.price_adjustment > 0 && (
+                          <span className="ml-2 text-muted-foreground">
+                            +${option.price_adjustment.toFixed(2)}
+                          </span>
+                        )}
+                      </Label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Required Addons (for burgers) */}
+            {isBurger && requiredAddons.length > 0 && (
+              <div className="space-y-4">
+                <h3 className="font-semibold">Required Addons</h3>
+                <div className="space-y-2">
+                  {requiredAddons.map((addon) => (
+                    <div key={addon.id} className="flex items-center space-x-2">
+                      <Checkbox
+                        checked={selectedAddons.some(a => a.id === addon.id)}
+                        onCheckedChange={(checked) => handleAddonChange(addon, checked as boolean)}
+                      />
+                      <Label>
+                        {addon.name}
+                        {addon.price_adjustment > 0 && (
+                          <span className="ml-2 text-muted-foreground">
+                            +${addon.price_adjustment.toFixed(2)}
+                          </span>
+                        )}
+                      </Label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Optional Addons (for burgers) */}
+            {isBurger && optionalAddons.length > 0 && (
+              <div className="space-y-4">
+                <h3 className="font-semibold">Optional Addons</h3>
+                <div className="space-y-2">
+                  {optionalAddons.map((addon) => (
+                    <div key={addon.id} className="flex items-center space-x-2">
+                      <Checkbox
+                        checked={selectedAddons.some(a => a.id === addon.id)}
+                        onCheckedChange={(checked) => handleAddonChange(addon, checked as boolean)}
+                      />
+                      <Label>
+                        {addon.name}
+                        {addon.price_adjustment > 0 && (
+                          <span className="ml-2 text-muted-foreground">
+                            +${addon.price_adjustment.toFixed(2)}
+                          </span>
                         )}
                       </Label>
                     </div>
@@ -235,15 +211,13 @@ export function MenuItemDialog({ item, open, onOpenChange, onAddToCart }: MenuIt
                 <span className="text-xl font-bold">${calculateTotal().toFixed(2)}</span>
               </div>
               <Button
-                onClick={handleAddToCart}
-                className="w-full bg-red-600 hover:bg-red-700"
-                disabled={
-                  (requiredOptions.length > 0 && !selectedOption) ||
-                  (requiredAddons.length > 0 && selectedAddons.length === 0)
-                }
-              >
-                Add to Cart
-              </Button>
+  onClick={handleAddToCart}
+  className="w-full bg-red-600 hover:bg-red-700"
+  disabled={isAddToCartDisabled}
+>
+  {isAddToCartDisabled ? 'Select required options' : 'Add to Cart'}
+</Button>
+
             </div>
           </div>
         </div>

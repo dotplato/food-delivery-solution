@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import { Separator } from '@/components/ui/separator';
 import { CartItem } from '@/components/cart/cart-item';
 import { CartSummary } from '@/components/cart/cart-summary';
-import { AddressForm } from '@/components/checkout/address-form';
 import { PaymentForm } from '@/components/checkout/payment-form';
 import { useCart } from '@/context/cart-context';
 import { useAuth } from '@/context/auth-context';
@@ -45,6 +44,10 @@ export default function CheckoutPage() {
   const [addressError, setAddressError] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('card');
   const [isProcessingCod, setIsProcessingCod] = useState(false);
+  const [userPoints, setUserPoints] = useState<number>(0);
+  const [redeemPoints, setRedeemPoints] = useState(false);
+  const [pointsToRedeem, setPointsToRedeem] = useState(0);
+  const [pointsDiscount, setPointsDiscount] = useState(0);
 
   // Calculate subtotal from items
   const subtotal = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
@@ -59,20 +62,59 @@ export default function CheckoutPage() {
   const deliveryFee = 3.99;
   const total = orderType === 'delivery' ? subtotal + deliveryFee : subtotal;
 
-  const handleOrderTypeSubmit = () => {
-    if (orderType === 'pickup') {
-      setPendingOrder({
-        items,
-        order_type: 'pickup',
-        subtotal,
-        delivery_fee: 0,
-        total: subtotal,
-      });
-      setStep('payment');
-    } else {
-      setLocationDialogOpen(true);
-      setStep('address');
+  useEffect(() => {
+    async function fetchProfile() {
+      if (user?.id) {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('full_name, phone')
+          .eq('id', user.id)
+          .single();
+        if (data) {
+          setFullName(data.full_name || '');
+          setPhone(data.phone || '');
+        }
+      }
     }
+    fetchProfile();
+  }, [user]);
+
+  // Fetch user points when entering payment step
+  useEffect(() => {
+    const fetchPoints = async () => {
+      if (user?.id && step === 'payment') {
+        const { data, error } = await supabase
+          .from('royalty_points')
+          .select('current_balance')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .single();
+        if (!error && data) {
+          setUserPoints(data.current_balance || 0);
+        } else {
+          setUserPoints(0);
+        }
+      }
+    };
+    fetchPoints();
+  }, [user, step]);
+
+  // Calculate points to redeem and discount
+  useEffect(() => {
+    if (redeemPoints && userPoints > 0 && pendingOrder) {
+      // 100 points = $1 off, up to order total
+      const maxPoints = Math.min(userPoints, Math.floor(pendingOrder.order_total * 100));
+      setPointsToRedeem(maxPoints);
+      setPointsDiscount(maxPoints / 100);
+    } else {
+      setPointsToRedeem(0);
+      setPointsDiscount(0);
+    }
+  }, [redeemPoints, userPoints, pendingOrder]);
+
+  const handleOrderTypeSubmit = () => {
+    setStep('address');
   };
 
   const handleLocationSelect = (loc: { lat: number; lng: number; address: string }) => {
@@ -83,26 +125,45 @@ export default function CheckoutPage() {
 
   const handleAddressFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedLocation) {
-      setAddressError('Please select a delivery address.');
-      return;
+    if (orderType === 'delivery') {
+      if (!selectedLocation) {
+        setAddressError('Please select a delivery address.');
+        return;
+      }
+      if (!fullName || !phone) {
+        setAddressError('Full Name and Phone are required.');
+        return;
+      }
+      setPendingOrder({
+        items,
+        order_type: 'delivery',
+        delivery_address: selectedLocation.address,
+        location: { lat: selectedLocation.lat, lng: selectedLocation.lng },
+        phone,
+        subtotal,
+        delivery_fee: deliveryFee,
+        order_total: subtotal + deliveryFee,
+        message,
+        full_name: fullName,
+      } as any);
+    } else {
+      // Pickup: only require name/phone
+      if (!fullName || !phone) {
+        setAddressError('Full Name and Phone are required.');
+        return;
+      }
+      setPendingOrder({
+        items,
+        order_type: 'pickup',
+        phone,
+        subtotal,
+        delivery_fee: 0,
+        order_total: subtotal,
+        message,
+        full_name: fullName,
+      } as any);
     }
-    if (!fullName || !phone) {
-      setAddressError('Full Name and Phone are required.');
-      return;
-    }
-    setPendingOrder({
-      items,
-      order_type: 'delivery',
-      delivery_address: selectedLocation.address,
-      location: { lat: selectedLocation.lat, lng: selectedLocation.lng },
-      phone,
-      subtotal,
-      delivery_fee: deliveryFee,
-      total,
-      message,
-      full_name: fullName,
-    } as any); // 'as any' to allow extra fields for now
+    setAddressError('');
     setStep('payment');
   };
 
@@ -112,7 +173,7 @@ export default function CheckoutPage() {
 
     try {
       const orderPayload: any = {
-        total: pendingOrder.total,
+        order_total: pendingOrder.order_total,
         delivery_address: pendingOrder.delivery_address,
         delivery_fee: pendingOrder.delivery_fee,
         phone: pendingOrder.phone,
@@ -146,6 +207,68 @@ export default function CheckoutPage() {
         .insert(orderItems);
 
       if (itemsError) throw itemsError;
+
+      toast.success("Order placed successfully!");
+      clearCart();
+      router.push("/order-success");
+    } catch (error: any) {
+      toast.error("Failed to create order. Please try again.");
+      console.error("COD Order Error:", error);
+    } finally {
+      setIsProcessingCod(false);
+    }
+  };
+
+  // Add a new handler for COD with points
+  const handleCodOrderWithPoints = async (pointsToRedeem: number, pointsDiscount: number) => {
+    if (!pendingOrder) return;
+    setIsProcessingCod(true);
+
+    try {
+      const orderPayload: any = {
+        order_total: pendingOrder.order_total - pointsDiscount,
+        delivery_address: pendingOrder.delivery_address,
+        delivery_fee: pendingOrder.delivery_fee,
+        phone: pendingOrder.phone,
+        full_name: pendingOrder.full_name,
+        payment_intent_id: null,
+        payment_status: "cash_on_delivery",
+        status: "pending",
+      };
+
+      if (user?.id) {
+        orderPayload.user_id = user.id;
+      }
+
+      const { data: orderData, error: orderError } = await supabase
+        .from("orders")
+        .insert(orderPayload)
+        .select()
+        .single();
+
+      if (orderError) throw orderError;
+
+      const orderItems = pendingOrder.items.map((item) => ({
+        order_id: orderData.id,
+        menu_item_id: item.id,
+        quantity: item.quantity,
+        price: item.price,
+      }));
+
+      const { error: itemsError } = await supabase
+        .from("order_items")
+        .insert(orderItems);
+
+      if (itemsError) throw itemsError;
+
+      // Deduct points spent if any
+      if (pointsToRedeem > 0 && user?.id) {
+        await supabase.from('royalty_points').insert({
+          user_id: user.id,
+          points_earned: 0,
+          points_spent: pointsToRedeem,
+        });
+      }
 
       toast.success("Order placed successfully!");
       clearCart();
@@ -192,9 +315,9 @@ export default function CheckoutPage() {
               </div>
             )}
             
-            {step === 'address' && orderType === 'delivery' && (
+            {step === 'address' && (
               <div className="bg-card border rounded-lg p-6">
-                <h2 className="text-xl font-semibold mb-4">Delivery Information</h2>
+                <h2 className="text-xl font-semibold mb-4">{orderType === 'delivery' ? 'Delivery Information' : 'Pickup Information'}</h2>
                 <Separator className="mb-6" />
                 <form onSubmit={handleAddressFormSubmit} className="space-y-4">
                   <div>
@@ -226,21 +349,25 @@ export default function CheckoutPage() {
                       rows={2}
                     />
                   </div>
-                  <div>
-                    <button
-                      type="button"
-                      className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded"
-                      onClick={() => setLocationDialogOpen(true)}
-                    >
-                      {selectedLocation ? 'Change Address' : 'Select Address'}
-                    </button>
-                  </div>
-                  {selectedLocation && (
-                    <div className="bg-gray-100 border rounded p-3 text-sm">
-                      <div><b>Selected Address:</b> {selectedLocation.address}</div>
-                    </div>
+                  {orderType === 'delivery' && (
+                    <>
+                      <div>
+                        <button
+                          type="button"
+                          className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded"
+                          onClick={() => setLocationDialogOpen(true)}
+                        >
+                          {selectedLocation ? 'Change Address' : 'Select Address'}
+                        </button>
+                      </div>
+                      {selectedLocation && (
+                        <div className="bg-gray-100 border rounded p-3 text-sm">
+                          <div><b>Selected Address:</b> {selectedLocation.address}</div>
+                        </div>
+                      )}
+                      {addressError && <div className="text-red-600 text-sm">{addressError}</div>}
+                    </>
                   )}
-                  {addressError && <div className="text-red-600 text-sm">{addressError}</div>}
                   <button
                     type="submit"
                     className="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-3 rounded-lg mt-2 transition"
@@ -248,11 +375,13 @@ export default function CheckoutPage() {
                     Continue to Payment
                   </button>
                 </form>
-                <LocationDialog
-                  open={locationDialogOpen}
-                  onClose={() => setLocationDialogOpen(false)}
-                  onSelect={handleLocationSelect}
-                />
+                {orderType === 'delivery' && (
+                  <LocationDialog
+                    open={locationDialogOpen}
+                    onClose={() => setLocationDialogOpen(false)}
+                    onSelect={handleLocationSelect}
+                  />
+                )}
               </div>
             )}
             
@@ -260,6 +389,26 @@ export default function CheckoutPage() {
               <div className="bg-card border rounded-lg p-6">
                 <h2 className="text-xl font-semibold mb-4">Payment</h2>
                 <Separator className="mb-6" />
+                {/* Redeem Points Option */}
+                {userPoints > 0 && (
+                  <div className="mb-4 flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      id="redeem-points"
+                      checked={redeemPoints}
+                      onChange={e => setRedeemPoints(e.target.checked)}
+                    />
+                    <label htmlFor="redeem-points" className="cursor-pointer">
+                      Redeem points ({userPoints} points available — ${(userPoints / 100).toFixed(2)} off)
+                    </label>
+                  </div>
+                )}
+                {/* Show discount if redeeming */}
+                {redeemPoints && pointsDiscount > 0 && (
+                  <div className="mb-4 text-green-700 font-semibold">
+                    Applying {pointsToRedeem} points for ${pointsDiscount.toFixed(2)} off
+                  </div>
+                )}
                 <RadioGroup
                   value={paymentMethod}
                   onValueChange={(value) => setPaymentMethod(value as PaymentMethod)}
@@ -279,7 +428,7 @@ export default function CheckoutPage() {
 
                 {paymentMethod === "card" ? (
                   <Elements stripe={stripePromise}>
-                    <PaymentForm pendingOrder={pendingOrder} />
+                    <PaymentForm pendingOrder={{...pendingOrder, pointsToRedeem, pointsDiscount}} />
                   </Elements>
                 ) : (
                   <div>
@@ -288,7 +437,7 @@ export default function CheckoutPage() {
                     </p>
                     <Button
                       className="w-full"
-                      onClick={handleCodOrder}
+                      onClick={() => handleCodOrderWithPoints(pointsToRedeem, pointsDiscount)}
                       disabled={isProcessingCod}
                     >
                       {isProcessingCod ? (
@@ -317,9 +466,22 @@ export default function CheckoutPage() {
                   />
                 ))}
               </div>
+              {/* Points Discount and Updated Total */}
+              {redeemPoints && pointsDiscount > 0 && (
+                <div className="mt-4">
+                  <div className="flex justify-between text-green-700 font-semibold">
+                    <span>Points Discount</span>
+                    <span>- ${pointsDiscount.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between text-lg font-bold mt-2">
+                    <span>Total after Discount</span>
+                    <span>${(total - pointsDiscount).toFixed(2)}</span>
+                  </div>
+                </div>
+              )}
             </div>
             
-            <CartSummary showCheckoutButton={false} />
+            <CartSummary showCheckoutButton={false} pointsDiscount={redeemPoints ? pointsDiscount : 0} />
           </div>
         </div>
       </div>

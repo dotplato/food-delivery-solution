@@ -4,16 +4,17 @@ import { useState } from 'react';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import type { MenuItem as MenuItemType, MenuItemOption, MenuItemAddon, MealOption } from '@/lib/types';
+import type { MenuItem as MenuItemType, MenuItemOption, MenuItemAddon, MealOption, Category } from '@/lib/types';
 import { useCart } from '@/context/cart-context';
 import { MenuItemDialog } from './menu-item-dialog';
 import { Plus, Star } from 'lucide-react';
 
 interface MenuItemProps {
   item: MenuItemType;
+  category?: Category;
 }
 
-export function MenuItem({ item }: MenuItemProps) {
+export function MenuItem({ item, category }: MenuItemProps) {
   const { addToCart } = useCart();
   const [dialogOpen, setDialogOpen] = useState(false);
 
@@ -22,8 +23,8 @@ export function MenuItem({ item }: MenuItemProps) {
     selectedAddons: MenuItemAddon[];
     selectedMealOptions?: MealOption[];
   }) => {
-    // Calculate total price including options
     let totalPrice = item.price;
+
     if (selectedOptions.selectedOption) {
       totalPrice += selectedOptions.selectedOption.price_adjustment;
     }
@@ -62,17 +63,11 @@ export function MenuItem({ item }: MenuItemProps) {
         </div>
         <CardContent className="p-4 flex-1 flex flex-col">
           <div className="flex justify-between items-start mb-2">
-            <h3 className="text-base font-semibold text-gray-900 line-clamp-2 leading-tight">
-              {item.name}
-            </h3>
-            <span className="text-lg font-bold text-red-700 ml-2 flex-shrink-0">
-              ${item.price.toFixed(2)}
-            </span>
+            <h3 className="text-base font-semibold text-gray-900 line-clamp-2 leading-tight">{item.name}</h3>
+            <span className="text-lg font-bold text-red-700 ml-2 flex-shrink-0">${item.price.toFixed(2)}</span>
           </div>
           {item.description && (
-            <p className="text-sm text-gray-600 line-clamp-2 mb-3 leading-relaxed flex-1">
-              {item.description}
-            </p>
+            <p className="text-sm text-gray-600 line-clamp-2 mb-3 leading-relaxed flex-1">{item.description}</p>
           )}
         </CardContent>
         <CardFooter className="p-4 pt-0 mt-auto">
@@ -90,10 +85,11 @@ export function MenuItem({ item }: MenuItemProps) {
 
       <MenuItemDialog
         item={item}
+        category={category}
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         onAddToCart={handleAddToCart}
       />
     </>
   );
-} 
+}

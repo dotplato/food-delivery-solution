@@ -35,7 +35,8 @@ export type Order = {
   id: string;
   user_id: string | null;
   status: string;
-  total: number;
+  subtotal: number;
+  order_total: number;
   delivery_address: string | null;
   delivery_fee: number;
   phone: string | null;
@@ -44,6 +45,7 @@ export type Order = {
   payment_status: string;
   created_at: string;
   updated_at: string;
+  points_discount?: number;
   items?: OrderItem[];
 };
 
@@ -79,7 +81,7 @@ export type PendingOrder = {
   };
   subtotal: number;
   delivery_fee: number;
-  total: number;
+  order_total: number;
 };
 
 export type MenuItemOption = {

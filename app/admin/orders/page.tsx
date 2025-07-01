@@ -17,6 +17,14 @@ import {
 import { toast } from "sonner";
 import { subDays, startOfDay } from "date-fns";
 import { cn } from "@/lib/utils";
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from "@/components/ui/table";
 
 type FilterType = "all" | "today" | "week" | "month";
 
@@ -189,34 +197,34 @@ export default function OrdersAdminPage() {
             <div className="text-red-600 text-center py-10">Error: {error}</div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full text-sm text-left">
-                <thead className="bg-muted/50">
-                  <tr>
-                    <th className="p-4">Customer</th>
-                    <th className="p-4">Created</th>
-                    <th className="p-4">Total</th>
-                    <th className="p-4">Status</th>
-                    <th className="p-4">Payment</th>
-                    <th className="p-4">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="p-4">Customer</TableHead>
+                    <TableHead className="p-4">Created</TableHead>
+                    <TableHead className="p-4">Total</TableHead>
+                    <TableHead className="p-4">Status</TableHead>
+                    <TableHead className="p-4">Payment</TableHead>
+                    <TableHead className="p-4">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
                   {filteredOrders.map((order) => (
-                    <tr key={order.id} className="border-b hover:bg-muted/50">
-                      <td className="p-4">
+                    <TableRow key={order.id} className="border-b hover:bg-muted/50">
+                      <TableCell className="p-4">
                         <p className="font-medium">{order.full_name || 'Guest'}</p>
                         <p className="font-mono text-xs text-muted-foreground">{order.id.substring(0,8)}...</p>
-                      </td>
-                      <td className="p-4">
+                      </TableCell>
+                      <TableCell className="p-4">
                         {new Date(order.created_at).toLocaleString([], {
                            dateStyle: 'short',
                            timeStyle: 'short'
                         })}
-                      </td>
-                      <td className="p-4 font-medium">
+                      </TableCell>
+                      <TableCell className="p-4 font-medium">
                         ${order.total?.toFixed(2)}
-                      </td>
-                      <td className="p-4">
+                      </TableCell>
+                      <TableCell className="p-4">
                         <div className="flex items-center gap-2">
                           {updatingOrderId === order.id ? (
                             <Loader2 className="h-4 w-4 animate-spin" />
@@ -237,8 +245,8 @@ export default function OrdersAdminPage() {
                             </Select>
                           )}
                         </div>
-                      </td>
-                      <td className="p-4">
+                      </TableCell>
+                      <TableCell className="p-4">
                         <div className="flex items-center gap-2">
                           {updatingOrderId === order.id ? (
                             <Loader2 className="h-4 w-4 animate-spin" />
@@ -259,8 +267,8 @@ export default function OrdersAdminPage() {
                             </Select>
                           )}
                         </div>
-                      </td>
-                      <td className="p-4">
+                      </TableCell>
+                      <TableCell className="p-4">
                         <Button
                           variant="ghost"
                           size="icon"
@@ -268,11 +276,11 @@ export default function OrdersAdminPage() {
                         >
                           <Eye className="h-4 w-4" />
                         </Button>
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   ))}
-                </tbody>
-              </table>
+                </TableBody>
+              </Table>
             </div>
           )}
         </CardContent>

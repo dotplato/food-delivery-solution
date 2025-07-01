@@ -1,11 +1,19 @@
 "use client";
 import { useEffect, useState } from "react";
-import { Plus } from "lucide-react";
+import { Plus, Pencil, Trash } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/lib/supabase/client";
 import type { Category } from "@/lib/types";
 import Loader from '@/components/ui/loader';
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from "@/components/ui/table";
 
 // CategoryDialog component (inline for now)
 function CategoryDialog({ open, onOpenChange, category, onSave }: {
@@ -143,29 +151,33 @@ export default function CategoriesAdminPage() {
             <Loader />
 
           ) : (
-            <table className="w-full text-sm">
-              <thead>
-                <tr>
-                  <th className="text-left">Name</th>
-                  <th className="text-left">Slug</th>
-                  <th className="text-left">Description</th>
-                  <th className="text-left">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Slug</TableHead>
+                  <TableHead>Description</TableHead>
+                  <TableHead>Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {categories.map((cat) => (
-                  <tr key={cat.id}>
-                    <td>{cat.name}</td>
-                    <td>{cat.slug}</td>
-                    <td>{cat.description}</td>
-                    <td>
-                      <Button size="sm" variant="outline" onClick={() => handleEdit(cat)} className="mr-2">Edit</Button>
-                      <Button size="sm" variant="destructive" onClick={() => handleDelete(cat.id)}>Delete</Button>
-                    </td>
-                  </tr>
+                  <TableRow key={cat.id}>
+                    <TableCell>{cat.name}</TableCell>
+                    <TableCell>{cat.slug}</TableCell>
+                    <TableCell>{cat.description}</TableCell>
+                    <TableCell>
+                      <Button variant="ghost" size="icon" aria-label="Edit" onClick={() => handleEdit(cat)} className="mr-2">
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button variant="ghost" size="icon" aria-label="Delete" onClick={() => handleDelete(cat.id)}>
+                        <Trash className="h-4 w-4 text-red-500" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
                 ))}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           )}
         </CardContent>
       </Card>

@@ -12,7 +12,10 @@ import { supabase } from '@/lib/supabase/client';
 import { PendingOrder } from '@/lib/types';
 
 interface PaymentFormProps {
-  pendingOrder: PendingOrder;
+  pendingOrder: PendingOrder & {
+    pointsDiscount?: number;
+    pointsToRedeem?: number;
+  };
 }
 
 export function PaymentForm({ pendingOrder }: PaymentFormProps) {
@@ -23,6 +26,13 @@ export function PaymentForm({ pendingOrder }: PaymentFormProps) {
   const router = useRouter();
   const { clearCart } = useCart();
   const { user } = useAuth();
+
+  // Calculate discounted total: subtotal + delivery_fee - pointsDiscount
+  const subtotal = pendingOrder.subtotal || 0;
+  const deliveryFee = pendingOrder.delivery_fee || 0;
+  const pointsDiscount = pendingOrder.pointsDiscount || 0;
+  const total = subtotal + deliveryFee;
+  const discountedTotal = total - pointsDiscount;
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -47,7 +57,7 @@ export function PaymentForm({ pendingOrder }: PaymentFormProps) {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          amount: Math.round(pendingOrder.total * 100), // Convert to cents
+          amount: Math.round(discountedTotal * 100), // Use discounted total
         }),
       });
 
@@ -96,14 +106,17 @@ export function PaymentForm({ pendingOrder }: PaymentFormProps) {
         .from('orders')
         .insert({
           user_id: user.id,
-          total: pendingOrder.total,
+          subtotal, // sum of item prices
+          delivery_fee: deliveryFee,
+          order_total: discountedTotal, // true paid amount (subtotal + delivery_fee - pointsDiscount)
+          points_discount: pointsDiscount,
           delivery_address: pendingOrder.delivery_address,
-          delivery_fee: pendingOrder.delivery_fee,
           phone: pendingOrder.phone,
           full_name: pendingOrder.full_name,
           payment_intent_id: paymentIntentId,
           payment_status: 'paid',
           status: 'pending',
+          order_type: pendingOrder.order_type, // Pass order type for admin
         })
         .select()
         .single();
@@ -174,7 +187,7 @@ export function PaymentForm({ pendingOrder }: PaymentFormProps) {
               Processing...
             </>
           ) : (
-            `Pay $${pendingOrder.total.toFixed(2)}`
+            `Pay $${discountedTotal.toFixed(2)}`
           )}
         </Button>
       </div>

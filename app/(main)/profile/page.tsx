@@ -8,16 +8,23 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
+import { LocationDialog } from '@/components/location/LocationDialog';
+import { useAuth } from '@/context/auth-context';
+import { supabase } from '@/lib/supabase/client';
 
 export default function ProfilePage() {
   const router = useRouter();
   const supabase = createClientComponentClient();
+  const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<{
     full_name: string;
     phone: string;
     address: string;
   } | null>(null);
+  const [address, setAddress] = useState('');
+  const [locationDialogOpen, setLocationDialogOpen] = useState(false);
+  const [royaltyPoints, setRoyaltyPoints] = useState<number | null>(null);
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -60,6 +67,22 @@ export default function ProfilePage() {
         }
 
         setProfile(profile);
+        setAddress(profile.address || '');
+        // Fetch royalty points
+        if (session?.user?.id) {
+          const { data: pointsData, error: pointsError } = await supabase
+            .from('royalty_points')
+            .select('current_balance')
+            .eq('user_id', session.user.id)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .single();
+          if (!pointsError && pointsData) {
+            setRoyaltyPoints(pointsData.current_balance);
+          } else {
+            setRoyaltyPoints(0);
+          }
+        }
     } catch (error) {
         console.error('Profile Page - Unexpected error:', error);
         toast.error('An unexpected error occurred');
@@ -113,6 +136,17 @@ export default function ProfilePage() {
     }
   };
 
+  const handleLocationSelect = async (loc: { address: string }) => {
+    setAddress(loc.address);
+    setLocationDialogOpen(false);
+    if (user?.id) {
+      await supabase
+        .from('profiles')
+        .update({ address: loc.address })
+        .eq('id', user.id);
+    }
+  };
+
   if (loading) {
     return (
       <div className="container mx-auto py-10">
@@ -127,6 +161,17 @@ export default function ProfilePage() {
 
   return (
     <div className="container mx-auto py-10">
+      {/* Royalty Points Card */}
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle>Royalty Points</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold">
+            {royaltyPoints !== null ? `${royaltyPoints} points` : 'Loading...'}
+          </div>
+        </CardContent>
+      </Card>
       <Card>
         <CardHeader>
           <CardTitle>Profile</CardTitle>
@@ -155,15 +200,23 @@ export default function ProfilePage() {
               <Label htmlFor="address">Address</Label>
               <Input
                 id="address"
-                value={profile?.address || ''}
-                onChange={(e) => setProfile(prev => ({ ...prev!, address: e.target.value }))}
+                value={address || ''}
+                onChange={(e) => setAddress(e.target.value)}
                 required
               />
-      </div>
+            </div>
             <Button type="submit" disabled={loading}>
               {loading ? 'Saving...' : 'Save Changes'}
             </Button>
           </form>
+          <div className="mt-4">
+            <Button onClick={() => setLocationDialogOpen(true)}>Change Address</Button>
+          </div>
+          <LocationDialog
+            open={locationDialogOpen}
+            onClose={() => setLocationDialogOpen(false)}
+            onSelect={handleLocationSelect}
+          />
         </CardContent>
       </Card>
     </div>

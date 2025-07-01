@@ -6,7 +6,8 @@ import type { MenuItem as MenuItemType, Category } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { supabase } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';import { Badge } from '@/components/ui/badge';
+import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 
 export function MenuGrid() {
@@ -36,7 +37,7 @@ export function MenuGrid() {
         .from('menu_items')
         .select(`
           *,
-          options:menu_item_options(*),
+          category:categories(*),
           addons:menu_item_addons(*),
           meal_options:meal_options(*)
         `)
@@ -48,10 +49,8 @@ export function MenuGrid() {
         return;
       }
 
-      // Ensure the data matches the expected types
       const typedMenuItems = (menuItemsData || []).map(item => ({
         ...item,
-        options: item.options || [],
         addons: item.addons || [],
         meal_options: item.meal_options || []
       }));
@@ -64,7 +63,6 @@ export function MenuGrid() {
     fetchMenuItems();
   }, []);
 
-  // Intersection Observer to track which category is currently visible
   useEffect(() => {
     if (loading || categories.length === 0) return;
 
@@ -80,16 +78,13 @@ export function MenuGrid() {
         });
       },
       {
-        rootMargin: '-20% 0px -70% 0px', // Adjust these values to control when a category is considered "active"
+        rootMargin: '-20% 0px -70% 0px',
         threshold: 0
       }
     );
 
-    // Observe all category sections
     Object.values(categoryRefs.current).forEach((ref) => {
-      if (ref) {
-        observer.observe(ref);
-      }
+      if (ref) observer.observe(ref);
     });
 
     return () => observer.disconnect();
@@ -98,24 +93,17 @@ export function MenuGrid() {
   const scrollToCategory = (categoryId: string) => {
     const element = categoryRefs.current[categoryId];
     if (element) {
-      element.scrollIntoView({ 
-        behavior: 'smooth', 
-        block: 'start' 
-      });
+      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
   };
 
-  const getItemsByCategory = (categoryId: string) => {
-    return menuItems.filter(item => item.category_id === categoryId);
-  };
+  const getItemsByCategory = (categoryId: string) =>
+    menuItems.filter(item => item.category_id === categoryId);
 
-  if (loading) {
-    return <MenuSkeleton />;
-  }
+  if (loading) return <MenuSkeleton />;
 
   return (
     <div className="space-y-8 ">
-      {/* Category Navigation */}
       <div className="sticky top-20 z-10 bg-white/95 pt-10 backdrop-blur-sm border-b pb-4">
         <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
           <Button
@@ -127,8 +115,8 @@ export function MenuGrid() {
             }}
             className={cn(
               "flex-shrink-0 rounded-full px-6 py-6",
-              activeCategory === null 
-                ? "bg-red-700 text-white border-red-700 hover:bg-red-800" 
+              activeCategory === null
+                ? "bg-red-700 text-white border-red-700 hover:bg-red-800"
                 : "border-gray-300 text-gray-900 hover:bg-gray-50"
             )}
           >
@@ -137,7 +125,7 @@ export function MenuGrid() {
           {categories.map(category => {
             const itemCount = getItemsByCategory(category.id).length;
             if (itemCount === 0) return null;
-            
+
             return (
               <Button
                 key={category.id}
@@ -146,18 +134,18 @@ export function MenuGrid() {
                 onClick={() => scrollToCategory(category.id)}
                 className={cn(
                   "flex-shrink-0 rounded-full px-6 py-6",
-                  activeCategory === category.id 
-                    ? "bg-red-700 text-white border-red-700 hover:bg-red-800" 
+                  activeCategory === category.id
+                    ? "bg-red-700 text-white border-red-700 hover:bg-red-800"
                     : "border-gray-300 text-gray-900 hover:bg-gray-50"
                 )}
               >
                 {category.name}
-                <Badge 
-                  variant="secondary" 
+                <Badge
+                  variant="secondary"
                   className={cn(
                     "ml-2 text-xs",
-                    activeCategory === category.id 
-                      ? "bg-white/20 text-white" 
+                    activeCategory === category.id
+                      ? "bg-white/20 text-white"
                       : "bg-gray-100 text-gray-700"
                   )}
                 >
@@ -169,32 +157,29 @@ export function MenuGrid() {
         </div>
       </div>
 
-      {/* Menu Items by Category */}
       <div className="space-y-12">
         {categories.map(category => {
           const categoryItems = getItemsByCategory(category.id);
           if (categoryItems.length === 0) return null;
 
           return (
-            <div 
-            
-              key={category.id} 
+            <div
+              key={category.id}
               ref={el => categoryRefs.current[category.id] = el}
               data-category-id={category.id}
             >
               <div className="mb-6">
-                <h2 className="text-2xl font-bold text-gray-900 mb-2">
-                  {category.name}
-                </h2>
+                <h2 className="text-2xl font-bold text-gray-900 mb-2">{category.name}</h2>
                 {category.description && (
                   <p className="text-gray-600">{category.description}</p>
                 )}
               </div>
-              
+
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                {categoryItems.map(item => (
-                  <MenuItem key={item.id} item={item} />
-                ))}
+                {categoryItems.map(item => {
+                  const matchedCategory = categories.find(cat => cat.id === item.category_id);
+                  return <MenuItem key={item.id} item={item} category={matchedCategory} />;
+                })}
               </div>
             </div>
           );
@@ -207,14 +192,11 @@ export function MenuGrid() {
 function MenuSkeleton() {
   return (
     <div className="space-y-8">
-      {/* Categories Skeleton */}
       <div className="flex gap-2">
         {[1, 2, 3, 4].map(i => (
           <Skeleton key={i} className="h-10 w-24" />
         ))}
       </div>
-
-      {/* Menu Items Grid Skeleton */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
         {[1, 2, 3, 4, 5, 6, 7, 8].map(i => (
           <Card key={i} className="overflow-hidden">

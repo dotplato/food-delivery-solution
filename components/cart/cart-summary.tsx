@@ -9,9 +9,10 @@ import { useAuth } from '@/context/auth-context';
 
 interface CartSummaryProps {
   showCheckoutButton?: boolean;
+  pointsDiscount?: number;
 }
 
-export function CartSummary({ showCheckoutButton = true }: CartSummaryProps) {
+export function CartSummary({ showCheckoutButton = true, pointsDiscount = 0 }: CartSummaryProps) {
   const { items, total: cartTotal } = useCart();
   const { user } = useAuth();
   const router = useRouter();
@@ -22,8 +23,8 @@ export function CartSummary({ showCheckoutButton = true }: CartSummaryProps) {
   const subtotal = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
 
   useEffect(() => {
-    setTotal(subtotal + deliveryFee);
-  }, [subtotal, deliveryFee]);
+    setTotal(subtotal + deliveryFee - pointsDiscount);
+  }, [subtotal, deliveryFee, pointsDiscount]);
 
   const handleCheckout = () => {
     if (!user) {
@@ -47,6 +48,13 @@ export function CartSummary({ showCheckoutButton = true }: CartSummaryProps) {
           <span className="text-muted-foreground">Delivery Fee</span>
           <span>${deliveryFee.toFixed(2)}</span>
         </div>
+        
+        {pointsDiscount > 0 && (
+          <div className="flex justify-between text-green-700 font-semibold">
+            <span>Points Discount</span>
+            <span>- ${pointsDiscount.toFixed(2)}</span>
+          </div>
+        )}
         
         <Separator className="my-3" />
         

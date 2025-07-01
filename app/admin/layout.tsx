@@ -19,9 +19,9 @@ import { NewOrderNotifier } from "./NewOrderNotifier";
 
 const navigation = [
   { name: 'Dashboard', href: '/admin', icon: Home },
+  { name: 'Orders', href: '/admin/orders', icon: ClipboardList },
   { name: 'Products', href: '/admin/menu-items', icon: Package },
   { name: 'Categories', href: '/admin/categories', icon: ShoppingCart },
-  { name: 'Orders', href: '/admin/orders', icon: ClipboardList },
   { name: 'Analytics', href: '/admin/analytics', icon: BarChart },
 ];
 

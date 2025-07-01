@@ -16,7 +16,7 @@ import Loader from "@/components/ui/loader";
 import Image from "next/image";
 
 interface OrderDetailsModalProps {
-  order: Order | null;
+  order: (Order & { order_type?: string; points_discount?: number }) | null;
   isOpen: boolean;
   onClose: () => void;
 }
@@ -106,6 +106,8 @@ export function OrderDetailsModal({ order, isOpen, onClose }: OrderDetailsModalP
               <div className="space-y-2">
                 <h3 className="font-semibold">Delivery Address</h3>
                 <p className="text-sm text-muted-foreground">{order.delivery_address || "N/A"}</p>
+                <h3 className="font-semibold mt-4">Order Type</h3>
+                <p className="text-sm text-muted-foreground">{order.order_type ? order.order_type.charAt(0).toUpperCase() + order.order_type.slice(1) : 'N/A'}</p>
               </div>
             </div>
             
@@ -159,9 +161,15 @@ export function OrderDetailsModal({ order, isOpen, onClose }: OrderDetailsModalP
                     <span className="text-muted-foreground">Delivery Fee</span>
                     <span>${order.delivery_fee.toFixed(2)}</span>
                 </div>
+                {order.points_discount && order.points_discount > 0 && (
+                  <div className="flex justify-between text-green-700 font-semibold">
+                    <span>Points Discount</span>
+                    <span>- ${order.points_discount.toFixed(2)}</span>
+                  </div>
+                )}
                 <div className="flex justify-between font-bold text-lg">
                     <span>Total</span>
-                    <span>${order.total.toFixed(2)}</span>
+                    <span>${((order.total - (order.points_discount || 0))).toFixed(2)}</span>
                 </div>
             </div>
 

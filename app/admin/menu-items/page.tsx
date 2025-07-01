@@ -2,16 +2,24 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, Filter } from 'lucide-react';
+import { Plus, Filter, Pencil, Trash } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DataTable } from '@/components/ui/data-table';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/lib/supabase/client';
 import { MenuItem } from '@/lib/types';
-import type { Database } from '@/lib/types/database.types';
 import type { Category } from '@/lib/types';
 import { MenuItemDialog } from './menu-item-dialog';
 import Loader from '@/components/ui/loader';
+
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuCheckboxItem,
+} from "@/components/ui/dropdown-menu";
+import { Checkbox } from "@/components/ui/checkbox";
+
 
 const columns = [
   {
@@ -53,18 +61,21 @@ const columns = [
     cell: ({ row }: any) => (
       <div className="flex items-center gap-2">
         <Button
-          variant="outline"
-          size="sm"
+          variant="ghost"
+          size="icon"
+          aria-label="Edit"
           onClick={() => row.original.onEdit(row.original)}
+          className="mr-2"
         >
-          Edit
+          <Pencil className="h-4 w-4" />
         </Button>
         <Button
-          variant="destructive"
-          size="sm"
+          variant="ghost"
+          size="icon"
+          aria-label="Delete"
           onClick={() => row.original.onDelete(row.original.id)}
         >
-          Delete
+          <Trash className="h-4 w-4 text-red-500" />
         </Button>
       </div>
     ),
@@ -78,7 +89,7 @@ export default function MenuItemsPage() {
   const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
-  const [selectedCategory, setSelectedCategory] = useState<string>('');
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
 
   useEffect(() => {
     fetchCategories();
@@ -152,7 +163,7 @@ export default function MenuItemsPage() {
             category_id: item.category_id,
             available: item.available,
             featured: item.featured,
-          } satisfies Database['public']['Tables']['menu_items']['Update'])
+          })
           .eq('id', selectedItem.id);
 
         if (error) throw error;
@@ -168,7 +179,7 @@ export default function MenuItemsPage() {
             category_id: item.category_id,
             available: item.available ?? true,
             featured: item.featured ?? false,
-          } satisfies Database['public']['Tables']['menu_items']['Insert']);
+          });
 
         if (error) throw error;
       }
@@ -182,10 +193,10 @@ export default function MenuItemsPage() {
     }
   };
 
-  // Filter menu items by selected category
-  const filteredMenuItems = selectedCategory
-    ? menuItems.filter((item) => item.category_id === selectedCategory)
-    : menuItems;
+  // Filtered menu items
+  const filteredMenuItems = selectedCategories.length === 0
+    ? menuItems
+    : menuItems.filter(item => item.category_id && selectedCategories.includes(item.category_id));
 
   return (
     <div>
@@ -203,20 +214,39 @@ export default function MenuItemsPage() {
       </div>
 
       {/* Category Filter */}
-      <div className="mb-4 flex gap-2 items-center">
-        <Filter className="h-4 w-4 text-muted-foreground" />
-        <select
-          id="category-filter"
-          className="border rounded px-2 py-1"
-          value={selectedCategory}
-          onChange={e => setSelectedCategory(e.target.value)}
+    
+<div className="mb-4 flex justify-end">
+  <DropdownMenu>
+    <DropdownMenuTrigger asChild>
+      <Button variant="outline">
+        <Filter className="h-4 w-4 mr-2 text-muted-foreground" />
+        Filter by Category
+        {selectedCategories.length > 0 && (
+          <span className="ml-2 text-xs text-muted-foreground">
+            ({selectedCategories.length})
+          </span>
+        )}
+      </Button>
+    </DropdownMenuTrigger>
+    <DropdownMenuContent className="w-56">
+      {categories.map((cat) => (
+        <DropdownMenuCheckboxItem
+          key={cat.id}
+          checked={selectedCategories.includes(cat.id)}
+          onCheckedChange={(checked) => {
+            setSelectedCategories((prev) =>
+              checked
+                ? [...prev, cat.id]
+                : prev.filter((id) => id !== cat.id)
+            );
+          }}
         >
-          <option value="">All</option>
-          {categories.map(category => (
-            <option key={category.id} value={category.id}>{category.name}</option>
-          ))}
-        </select>
-      </div>
+          {cat.name}
+        </DropdownMenuCheckboxItem>
+      ))}
+    </DropdownMenuContent>
+  </DropdownMenu>
+</div>
 
       {loading ? (
         <Loader />
