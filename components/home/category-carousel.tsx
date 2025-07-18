@@ -6,29 +6,39 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 // Mock data for categories
 const categories = [
   {
-    id: 'burgers',
-    name: 'Burgers',
-    image: '/images/burgers.jpeg',
+    id: 'beef-burgers',
+    name: 'Beef Burgers',
+    image: 'https://rsezoslpeirbbgwklnqa.supabase.co/storage/v1/object/public/menu-items/categories/Beef%20Burger.png',
   },
   {
-    id: 'drinks',
+    id: 'chicken-burgers',
+    name: 'Chicken Burgers',
+    image: 'https://rsezoslpeirbbgwklnqa.supabase.co/storage/v1/object/public/menu-items/categories/Chicken%20Burger.png',
+  },
+  {
+    id: 'loaded-fries',
+    name: 'Loaded Fries',
+    image: 'https://rsezoslpeirbbgwklnqa.supabase.co/storage/v1/object/public/menu-items/categories/loaded%20fries.png',
+  },
+  {
+    id: 'Drinks',
     name: 'Drinks',
-    image: 'https://images.pexels.com/photos/1200348/pexels-photo-1200348.jpeg',
+    image: 'https://rsezoslpeirbbgwklnqa.supabase.co/storage/v1/object/public/menu-items/categories/drinks.png',
   },
   {
-    id: 'desserts',
-    name: 'Desserts',
-    image: 'https://images.pexels.com/photos/3026804/pexels-photo-3026804.jpeg',
+    id: 'Wings',
+    name: 'wings',
+    image: 'https://rsezoslpeirbbgwklnqa.supabase.co/storage/v1/object/public/menu-items/categories/strips%20and%20wings.png',
   },
   {
-    id: 'sides',
-    name: 'Sides',
-    image: 'https://images.pexels.com/photos/13161027/pexels-photo-13161027.jpeg',
+    id: 'veggies',
+    name: 'Veggies',
+    image: 'https://rsezoslpeirbbgwklnqa.supabase.co/storage/v1/object/public/menu-items/categories/veggies.png',
   },
   {
-    id: 'pizzas',
-    name: 'Pizzas',
-    image: '/images/burgers.jpeg',
+    id: 'Wraps',
+    name: 'Wraps',
+    image: 'https://rsezoslpeirbbgwklnqa.supabase.co/storage/v1/object/public/menu-items/categories/wrap.png',
   },
 ];
 
