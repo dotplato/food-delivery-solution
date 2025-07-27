@@ -48,7 +48,7 @@ export function CategoryCarousel() {
   const scroll = (dir: 'left' | 'right') => {
     if (scrollRef.current) {
       const { scrollLeft, clientWidth, scrollWidth } = scrollRef.current;
-      if (dir === 'right') {
+      if (dir === 'right') { 
         // If at (or near) end, go back to start
         if (scrollLeft + clientWidth >= scrollWidth - 10) {
           scrollRef.current.scrollTo({ left: 0, behavior: 'smooth' });
@@ -69,6 +69,7 @@ export function CategoryCarousel() {
     return () => clearInterval(interval);
     // eslint-disable-next-line
   }, []);
+  
 
   return (
     <section>
