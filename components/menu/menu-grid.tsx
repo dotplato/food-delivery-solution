@@ -13,54 +13,34 @@ import { cn } from '@/lib/utils';
 export function MenuGrid() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [menuItems, setMenuItems] = useState<MenuItemType[]>([]);
+  const [addons, setAddons] = useState<any[]>([]);
+  const [mealOptions, setMealOptions] = useState<any[]>([]);
+  const [sauces, setSauces] = useState<any[]>([]);
+  const [categorySauces, setCategorySauces] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const categoryRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
 
   useEffect(() => {
-    async function fetchCategories() {
-      const { data, error } = await supabase
-        .from('categories')
-        .select('*')
-        .order('name');
-
-      if (error) {
-        console.error('Error fetching categories:', error);
-        return;
-      }
-
-      setCategories(data || []);
-    }
-
-    async function fetchMenuItems() {
-      const { data: menuItemsData, error: menuItemsError } = await supabase
-        .from('menu_items')
-        .select(`
-          *,
-          category:categories(*),
-          addons:menu_item_addons(*),
-          meal_options:meal_options(*)
-        `)
-        .eq('available', true)
-        .order('name');
-
-      if (menuItemsError) {
-        console.error('Error fetching menu items:', menuItemsError);
-        return;
-      }
-
-      const typedMenuItems = (menuItemsData || []).map(item => ({
-        ...item,
-        addons: item.addons || [],
-        meal_options: item.meal_options || []
-      }));
-
-      setMenuItems(typedMenuItems);
+    async function fetchAll() {
+      setLoading(true);
+      const [catRes, menuRes, addonsRes, mealOptionsRes, saucesRes, catSaucesRes] = await Promise.all([
+        supabase.from('categories').select('*').order('name'),
+        supabase.from('menu_items').select('*').eq('available', true).order('name'),
+        supabase.from('addons').select('*').order('name'),
+        supabase.from('meal_options').select('*').order('name'),
+        supabase.from('sauces').select('*').order('name'),
+        supabase.from('category_sauces').select('*'),
+      ]);
+      setCategories(catRes.data || []);
+      setMenuItems(menuRes.data || []);
+      setAddons(addonsRes.data || []);
+      setMealOptions(mealOptionsRes.data || []);
+      setSauces(saucesRes.data || []);
+      setCategorySauces(catSaucesRes.data || []);
       setLoading(false);
     }
-
-    fetchCategories();
-    fetchMenuItems();
+    fetchAll();
   }, []);
 
   useEffect(() => {
@@ -125,7 +105,7 @@ export function MenuGrid() {
           {categories.map(category => {
             const itemCount = getItemsByCategory(category.id).length;
             if (itemCount === 0) return null;
-
+            
             return (
               <Button
                 key={category.id}
@@ -174,11 +154,11 @@ export function MenuGrid() {
                   <p className="text-gray-600">{category.description}</p>
                 )}
               </div>
-
+              
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                 {categoryItems.map(item => {
                   const matchedCategory = categories.find(cat => cat.id === item.category_id);
-                  return <MenuItem key={item.id} item={item} category={matchedCategory} />;
+                  return <MenuItem key={item.id} item={item} category={matchedCategory} addons={addons} mealOptions={mealOptions} sauces={sauces} categorySauces={categorySauces} />;
                 })}
               </div>
             </div>

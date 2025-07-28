@@ -28,7 +28,7 @@ import {
 
 type FilterType = "all" | "today" | "week" | "month";
 
-export default function OrdersAdminPage() {
+export default function Orders() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [filteredOrders, setFilteredOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
@@ -222,7 +222,7 @@ export default function OrdersAdminPage() {
                         })}
                       </TableCell>
                       <TableCell className="p-4 font-medium">
-                        ${order.total?.toFixed(2)}
+                        ${order.order_total?.toFixed(2)}
                       </TableCell>
                       <TableCell className="p-4">
                         <div className="flex items-center gap-2">
@@ -278,7 +278,7 @@ export default function OrdersAdminPage() {
                         </Button>
                       </TableCell>
                     </TableRow>
-                  ))}
+                ))}
                 </TableBody>
               </Table>
             </div>

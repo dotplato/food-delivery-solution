@@ -32,7 +32,7 @@ export default function MenuPage() {
           {/* Cart Preview */}
           <div className="lg:col-span-1">
             <Suspense fallback={<Loader />}>
-              <CartPreview />
+            <CartPreview />
             </Suspense>
           </div>
         </div>

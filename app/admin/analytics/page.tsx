@@ -93,12 +93,17 @@ export default function AnalyticsPage() {
         quantity,
         price,
         menu_items!inner(id, name, image_url),
-        orders!inner(created_at, status)
-      `)
-      .eq('orders.status', 'completed');
+        orders!inner(created_at, status, order_total)
+      `);
 
     if (itemsError) {
       console.error("Error fetching sales data:", itemsError);
+      setLoading(false);
+      return;
+    }
+
+    if (!orderItems || orderItems.length === 0) {
+      setSalesData([]);
       setLoading(false);
       return;
     }

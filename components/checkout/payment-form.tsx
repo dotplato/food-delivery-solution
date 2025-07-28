@@ -83,12 +83,15 @@ export function PaymentForm({ pendingOrder }: PaymentFormProps) {
       }
 
       if (paymentIntent.status === 'succeeded') {
-        // Create order in the database
-        await createOrder(paymentIntent.id);
-
-        // Clear the cart and redirect to the success page
+        try {
+          await createOrder(paymentIntent.id);
+        } catch (orderError) {
+          // Log but do not block user
+          console.error('Order creation failed after payment:', orderError);
+        }
         clearCart();
         router.push('/order-success');
+        return;
       }
     } catch (err: any) {
       console.error('Payment error:', err);

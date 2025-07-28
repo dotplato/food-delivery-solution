@@ -8,14 +8,20 @@ import type { MenuItem as MenuItemType, MenuItemOption, MenuItemAddon, MealOptio
 import { useCart } from '@/context/cart-context';
 import { MenuItemDialog } from './menu-item-dialog';
 import { Plus, Star } from 'lucide-react';
+import { useAuth } from '@/context/auth-context';
 
 interface MenuItemProps {
   item: MenuItemType;
   category?: Category;
+  addons: any[];
+  mealOptions: any[];
+  sauces: any[];
+  categorySauces: any[];
 }
 
-export function MenuItem({ item, category }: MenuItemProps) {
+export function MenuItem({ item, category, addons, mealOptions, sauces, categorySauces }: MenuItemProps) {
   const { addToCart } = useCart();
+  const { user } = useAuth();
   const [dialogOpen, setDialogOpen] = useState(false);
 
   const handleAddToCart = (selectedOptions: {
@@ -39,6 +45,16 @@ export function MenuItem({ item, category }: MenuItemProps) {
       ...item,
       price: totalPrice
     }, selectedOptions);
+  };
+
+  const handleOpenDialog = () => {
+    if (!user) {
+      if (typeof window !== 'undefined') {
+        window.location.href = '/signin?redirect=/menu';
+      }
+      return;
+    }
+    setDialogOpen(true);
   };
 
   return (
@@ -72,7 +88,7 @@ export function MenuItem({ item, category }: MenuItemProps) {
         </CardContent>
         <CardFooter className="p-4 pt-0 mt-auto">
           <Button
-            onClick={() => setDialogOpen(true)}
+            onClick={handleOpenDialog}
             className="w-full bg-gray-100 hover:bg-red-700 hover:text-white text-foreground font-medium py-6 rounded-xl transition-colors duration-200"
             disabled={!item.available}
             size="sm"
@@ -89,7 +105,11 @@ export function MenuItem({ item, category }: MenuItemProps) {
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         onAddToCart={handleAddToCart}
+        addons={addons}
+        mealOptions={mealOptions}
+        sauces={sauces}
+        categorySauces={categorySauces}
       />
     </>
   );
-}
+} 

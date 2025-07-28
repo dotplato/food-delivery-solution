@@ -204,7 +204,7 @@ export default function ProfilePage() {
                 onChange={(e) => setAddress(e.target.value)}
                 required
               />
-            </div>
+      </div>
             <Button type="submit" disabled={loading}>
               {loading ? 'Saving...' : 'Save Changes'}
             </Button>

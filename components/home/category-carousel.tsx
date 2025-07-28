@@ -35,6 +35,7 @@ const categories = [
     name: 'Veggies',
     image: 'https://rsezoslpeirbbgwklnqa.supabase.co/storage/v1/object/public/menu-items/categories/veggies.png',
   },
+
   {
     id: 'Wraps',
     name: 'Wraps',

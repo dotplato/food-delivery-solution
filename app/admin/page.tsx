@@ -70,7 +70,7 @@ export default function AdminDashboard() {
       // Fetch stats
       const { data: revenueData, error: revenueError } = await supabase
         .from("orders")
-        .select("total")
+        .select("order_total")
         .eq("payment_status", "paid");
 
       const { count: salesCount, error: salesError } = await supabase
@@ -83,7 +83,7 @@ export default function AdminDashboard() {
 
       if (!revenueError && !salesError && !productsError) {
         const totalRevenue =
-          revenueData?.reduce((sum, order) => sum + order.total, 0) || 0;
+          revenueData?.reduce((sum, order) => sum + order.order_total, 0) || 0;
         setStats({
           totalRevenue: totalRevenue,
           totalSales: salesCount || 0,
@@ -99,7 +99,7 @@ export default function AdminDashboard() {
         .eq("status", "pending")
         .gte("created_at", today)
         .order("created_at", { ascending: false });
-
+        
       if (pendingOrdersError) {
         console.error("Error fetching today's pending orders:", pendingOrdersError);
       } else {
@@ -109,18 +109,19 @@ export default function AdminDashboard() {
       // Fetch all orders for chart
       const { data: allOrdersData, error: allOrdersError } = await supabase
         .from("orders")
-        .select("created_at, total");
+        .select("created_at, order_total");
 
       if (allOrdersError) {
         console.error("Error fetching all orders:", allOrdersError);
       } else if (allOrdersData) {
         setAllOrders(allOrdersData);
       }
-      
+
       // Fetch top grossing products for today
       const { data: todaysOrders, error: ordersError } = await supabase
         .from('orders')
         .select('id')
+        .eq('status', 'completed')
         .gte('created_at', today);
 
       if (ordersError) {
@@ -135,7 +136,7 @@ export default function AdminDashboard() {
 
         if (itemsError) {
           console.error("Error fetching order items for top products:", itemsError);
-        } else if (orderItems) {
+        } else if (orderItems && orderItems.length > 0) {
           const productSales = orderItems.reduce<Record<string, TopProduct>>((acc, item) => {
             const menuItem = item.menu_items as any;
             if (!menuItem) return acc;
@@ -158,7 +159,11 @@ export default function AdminDashboard() {
             .slice(0, 3);
 
           setTopProducts(sortedProducts);
+        } else {
+          setTopProducts([]);
         }
+      } else {
+        setTopProducts([]);
       }
 
       setLoading(false);
@@ -195,7 +200,7 @@ export default function AdminDashboard() {
         if(!acc[date]) {
             acc[date] = { date, revenue: 0, sales: 0 };
         }
-        acc[date].revenue += order.total;
+        acc[date].revenue += order.order_total;
         acc[date].sales += 1;
         return acc;
     }, {} as {[key: string]: ChartData});

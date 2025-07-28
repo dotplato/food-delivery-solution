@@ -1,61 +1,55 @@
 "use client";
-import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from "react-leaflet";
-import L, { LeafletMouseEvent } from "leaflet";
-import { useEffect } from "react";
-import "leaflet/dist/leaflet.css";
+import { GoogleMap, Marker, useJsApiLoader } from "@react-google-maps/api";
+import { useCallback, useRef } from "react";
 
-const customIcon = new L.Icon({
-  iconUrl: '/images/pin.png',
-  iconSize: [32, 32],
-  iconAnchor: [16, 32],
-  popupAnchor: [0, -32],
-});
+export const RESTAURANT_LOCATION = { lat: 53.23674334142961, lng: -1.4252599604172964 };
+const MAP_CONTAINER_STYLE = { width: "100%", height: "100%" };
 
-const DEFAULT_POSITION: [number, number] = [37.7749, -122.4194];
-
-function LocationMarker({ position, setPosition }: { position: [number, number] | null, setPosition: (pos: [number, number]) => void }) {
-  const map = useMap();
-  useEffect(() => {
-    if (position) {
-      map.setView(position, 17, { animate: true });
-    }
-  }, [position, map]);
-
-  useMapEvents({
-    click(e: LeafletMouseEvent) {
-      setPosition([e.latlng.lat, e.latlng.lng]);
-    },
+export default function GoogleMapPicker({ position, setPosition, onMapLoad }: { position: [number, number] | null, setPosition: (pos: [number, number]) => void, onMapLoad?: (map: any) => void }) {
+  const { isLoaded } = useJsApiLoader({
+    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_API_KEY || process.env.GOOGLE_API_KEY || '',
+    libraries: ['places'],
   });
+  const mapRef = useRef<any>(null);
 
-  return position ? (
-    <Marker
-      position={position}
-      draggable={true}
-      icon={customIcon}
-      eventHandlers={{
-        dragend: (e) => {
-          const marker = e.target;
-          const latlng = marker.getLatLng();
-          setPosition([latlng.lat, latlng.lng]);
-        },
-      }}
-    />
-  ) : null;
-}
+  const onMapClick = useCallback((e: google.maps.MapMouseEvent) => {
+    if (e.latLng) {
+      setPosition([e.latLng.lat(), e.latLng.lng()]);
+    }
+  }, [setPosition]);
 
-export default function LeafletMap({ position, setPosition }: { position: [number, number] | null, setPosition: (pos: [number, number]) => void }) {
+  const onMarkerDragEnd = useCallback((e: google.maps.MapMouseEvent) => {
+    if (e.latLng) {
+      setPosition([e.latLng.lat(), e.latLng.lng()]);
+    }
+  }, [setPosition]);
+
+  if (!isLoaded) return <div className="w-full h-full flex items-center justify-center">Loading map...</div>;
+
   return (
-    <MapContainer
-      center={position || DEFAULT_POSITION}
-      zoom={13}
-      style={{ height: "100%", width: "100%" }}
-      scrollWheelZoom={true}
+    <GoogleMap
+      mapContainerStyle={MAP_CONTAINER_STYLE}
+      center={position ? { lat: position[0], lng: position[1] } : RESTAURANT_LOCATION}
+      zoom={position ? 17 : 13}
+      onClick={onMapClick}
+      onLoad={map => {
+        mapRef.current = map;
+        if (onMapLoad) onMapLoad(map);
+      }}
+      options={{ streetViewControl: false, mapTypeControl: false }}
     >
-      <TileLayer
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-      />
-      <LocationMarker position={position} setPosition={setPosition} />
-    </MapContainer>
+      {position && (
+        <Marker
+          position={{ lat: position[0], lng: position[1] }}
+          draggable
+          onDragEnd={onMarkerDragEnd}
+          icon={{
+            url: '/images/pin.png',
+            scaledSize: new window.google.maps.Size(32, 32),
+            anchor: new window.google.maps.Point(16, 32),
+          }}
+        />
+      )}
+    </GoogleMap>
   );
 } 

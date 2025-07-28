@@ -38,6 +38,14 @@ export default function CheckoutPage() {
   const { items, updateQuantity, removeFromCart, clearCart } = useCart();
   const { user } = useAuth();
   const router = useRouter();
+
+  // Redirect unauthenticated users
+  useEffect(() => {
+    if (typeof window !== 'undefined' && !user) {
+      router.replace('/signin?redirect=/checkout');
+    }
+  }, [user, router]);
+
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
   const [message, setMessage] = useState('');

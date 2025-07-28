@@ -66,7 +66,7 @@ export function TodaysPendingOrders({ orders, onStatusChange, getStatusClass, on
                   </p>
                 </div>
                 <div className="flex items-center gap-4">
-                  <p className="font-medium w-16 text-right">${order.total.toFixed(2)}</p>
+                  <p className="font-medium w-16 text-right">${order.order_total.toFixed(2)}</p>
                   <div className="flex items-center gap-2">
                     {updatingOrderId === order.id ? (
                       <Loader2 className="h-4 w-4 animate-spin" />

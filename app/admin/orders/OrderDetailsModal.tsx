@@ -169,7 +169,7 @@ export function OrderDetailsModal({ order, isOpen, onClose }: OrderDetailsModalP
                 )}
                 <div className="flex justify-between font-bold text-lg">
                     <span>Total</span>
-                    <span>${((order.total - (order.points_discount || 0))).toFixed(2)}</span>
+                    <span>${order.order_total.toFixed(2)}</span>
                 </div>
             </div>
 

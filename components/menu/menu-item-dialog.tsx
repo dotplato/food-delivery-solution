@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import type { MenuItem, MenuItemOption, MenuItemAddon, MealOption, Category } from '@/lib/types';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/lib/supabase/client';
 
 interface MenuItemDialogProps {
   item: MenuItem;
@@ -19,16 +20,28 @@ interface MenuItemDialogProps {
     selectedOption?: MenuItemOption;
     selectedAddons: MenuItemAddon[];
     selectedMealOptions?: MealOption[];
+    selectedSauce?: any;
   }) => void;
+  addons: any[];
+  mealOptions: any[];
+  sauces: any[];
+  categorySauces: any[];
 }
 
-export function MenuItemDialog({ item, category, open, onOpenChange, onAddToCart }: MenuItemDialogProps) {
+export function MenuItemDialog({ item, category, open, onOpenChange, onAddToCart, addons, mealOptions, sauces, categorySauces }: MenuItemDialogProps) {
   const [selectedOption, setSelectedOption] = useState<MenuItemOption | null>(null);
   const [selectedAddons, setSelectedAddons] = useState<MenuItemAddon[]>([]);
   const [selectedMealOptions, setSelectedMealOptions] = useState<MealOption[]>([]);
   const [selectedStyle, setSelectedStyle] = useState<'own' | 'meal'>('own');
+  const [selectedSauce, setSelectedSauce] = useState<any | null>(null);
 
-  const isBurger = category?.slug === 'burgers';
+  // Filter addons for this dialog
+  const showAddons = category?.addons_available;
+  // Filter meal options for this dialog
+  const showMealOptions = category?.meal_options_available;
+  // Filter sauces for this category
+  const sauceIds = categorySauces.filter(cs => cs.category_id === category?.id).map(cs => cs.sauce_id);
+  const saucesForCategory = sauces.filter(s => sauceIds.includes(s.id));
 
   const handleAddonChange = (addon: MenuItemAddon, checked: boolean) => {
     if (checked) {
@@ -48,39 +61,29 @@ export function MenuItemDialog({ item, category, open, onOpenChange, onAddToCart
 
   const calculateTotal = () => {
     let total = item.price;
-    
-    if (isBurger && selectedStyle === 'meal') {
-      selectedMealOptions.forEach(option => {
-        total += option.price_adjustment;
-      });
+    selectedAddons.forEach(addon => {
+      total += addon.price_adjustment;
+    });
+    if (selectedStyle === 'meal') {
+    selectedMealOptions.forEach(option => {
+      total += option.price_adjustment;
+    });
     }
-    
-    if (isBurger) {
-      selectedAddons.forEach(addon => {
-        total += addon.price_adjustment;
-      });
-    }
-    
-    if (selectedOption) {
-      total += selectedOption.price_adjustment;
-    }
-    
     return total;
   };
 
+  const isAddToCartDisabled = (saucesForCategory.length > 0 && !selectedSauce);
+
   const handleAddToCart = () => {
+    if (isAddToCartDisabled) return;
     onAddToCart({
       selectedOption: undefined,
-      selectedAddons: isBurger ? selectedAddons : [],
-      selectedMealOptions: isBurger && selectedStyle === 'meal' && selectedMealOptions.length > 0 ? selectedMealOptions : undefined,
+      selectedAddons,
+      selectedMealOptions: selectedStyle === 'meal' && selectedMealOptions.length > 0 ? selectedMealOptions : undefined,
+      selectedSauce,
     });
     onOpenChange(false);
   };
-
-  // For burgers, show all meal_options and all addons
-  const requiredAddons = item.addons?.filter(addon => addon.is_required) || [];
-  const optionalAddons = item.addons?.filter(addon => !addon.is_required) || [];
-  const isAddToCartDisabled = isBurger && requiredAddons.length > 0 && selectedAddons.filter(addon => addon.is_required).length === 0;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -88,7 +91,6 @@ export function MenuItemDialog({ item, category, open, onOpenChange, onAddToCart
         <DialogHeader>
           <DialogTitle className="text-2xl font-bold">{item.name}</DialogTitle>
         </DialogHeader>
-
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="relative h-64 rounded-lg overflow-hidden">
             {item.image_url ? (
@@ -109,8 +111,55 @@ export function MenuItemDialog({ item, category, open, onOpenChange, onAddToCart
           <div className="space-y-6">
             <p className="text-muted-foreground">{item.description}</p>
 
-            {/* Burger Style Selection */}
-            {isBurger && (
+            {/* Addons */}
+            {showAddons && addons.length > 0 && (
+              <div className="space-y-4">
+                <h3 className="font-semibold">Addons</h3>
+                <div className="space-y-2">
+                  {addons.map((addon) => (
+                    <div key={addon.id} className="flex items-center space-x-2">
+                      <Checkbox
+                        checked={selectedAddons.some(a => a.id === addon.id)}
+                        onCheckedChange={(checked) => handleAddonChange(addon, checked as boolean)}
+                      />
+                      <Label>
+                        {addon.name}
+                          {addon.price_adjustment > 0 && (
+                          <span className="ml-2 text-muted-foreground">
+                              +${addon.price_adjustment.toFixed(2)}
+                            </span>
+                        )}
+                      </Label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Sauces (required, radio group) */}
+            {saucesForCategory.length > 0 && (
+              <div className="space-y-4">
+                <h3 className="font-semibold">Choose a Sauce <span className="text-red-600">*</span></h3>
+                      <RadioGroup
+                  value={selectedSauce?.id || ''}
+                  onValueChange={val => {
+                    const sauce = saucesForCategory.find(s => s.id === val);
+                    setSelectedSauce(sauce || null);
+                  }}
+                  className="space-y-2"
+                >
+                  {saucesForCategory.map((sauce) => (
+                    <div key={sauce.id} className="flex items-center space-x-2">
+                      <RadioGroupItem value={sauce.id} id={sauce.id} />
+                      <Label htmlFor={sauce.id}>{sauce.name}</Label>
+                    </div>
+                  ))}
+                </RadioGroup>
+              </div>
+            )}
+
+            {/* Meal Options */}
+            {showMealOptions && mealOptions.length > 0 && (
               <div className="space-y-4">
                 <h3 className="font-semibold">Choose Style</h3>
                 <RadioGroup
@@ -129,13 +178,11 @@ export function MenuItemDialog({ item, category, open, onOpenChange, onAddToCart
                 </RadioGroup>
               </div>
             )}
-
-            {/* Meal Options (for burgers, show all meal_options) */}
-            {isBurger && item.meal_options && item.meal_options.length > 0 && (
+            {showMealOptions && mealOptions.length > 0 && selectedStyle === 'meal' && (
               <div className="space-y-4">
                 <h3 className="font-semibold">Meal Options</h3>
                 <div className="space-y-2">
-                  {item.meal_options.map((option) => (
+                  {mealOptions.map((option) => (
                     <div key={option.id} className="flex items-center space-x-2">
                       <Checkbox
                         checked={selectedMealOptions.some(o => o.id === option.id)}
@@ -143,60 +190,10 @@ export function MenuItemDialog({ item, category, open, onOpenChange, onAddToCart
                       />
                       <Label>
                         {option.name}
-                        {option.price_adjustment > 0 && (
+                          {option.price_adjustment > 0 && (
                           <span className="ml-2 text-muted-foreground">
-                            +${option.price_adjustment.toFixed(2)}
-                          </span>
-                        )}
-                      </Label>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Required Addons (for burgers) */}
-            {isBurger && requiredAddons.length > 0 && (
-              <div className="space-y-4">
-                <h3 className="font-semibold">Required Addons</h3>
-                <div className="space-y-2">
-                  {requiredAddons.map((addon) => (
-                    <div key={addon.id} className="flex items-center space-x-2">
-                      <Checkbox
-                        checked={selectedAddons.some(a => a.id === addon.id)}
-                        onCheckedChange={(checked) => handleAddonChange(addon, checked as boolean)}
-                      />
-                      <Label>
-                        {addon.name}
-                        {addon.price_adjustment > 0 && (
-                          <span className="ml-2 text-muted-foreground">
-                            +${addon.price_adjustment.toFixed(2)}
-                          </span>
-                        )}
-                      </Label>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Optional Addons (for burgers) */}
-            {isBurger && optionalAddons.length > 0 && (
-              <div className="space-y-4">
-                <h3 className="font-semibold">Optional Addons</h3>
-                <div className="space-y-2">
-                  {optionalAddons.map((addon) => (
-                    <div key={addon.id} className="flex items-center space-x-2">
-                      <Checkbox
-                        checked={selectedAddons.some(a => a.id === addon.id)}
-                        onCheckedChange={(checked) => handleAddonChange(addon, checked as boolean)}
-                      />
-                      <Label>
-                        {addon.name}
-                        {addon.price_adjustment > 0 && (
-                          <span className="ml-2 text-muted-foreground">
-                            +${addon.price_adjustment.toFixed(2)}
-                          </span>
+                              +${option.price_adjustment.toFixed(2)}
+                            </span>
                         )}
                       </Label>
                     </div>
@@ -211,13 +208,12 @@ export function MenuItemDialog({ item, category, open, onOpenChange, onAddToCart
                 <span className="text-xl font-bold">${calculateTotal().toFixed(2)}</span>
               </div>
               <Button
-  onClick={handleAddToCart}
-  className="w-full bg-red-600 hover:bg-red-700"
-  disabled={isAddToCartDisabled}
->
-  {isAddToCartDisabled ? 'Select required options' : 'Add to Cart'}
-</Button>
-
+                onClick={handleAddToCart}
+                className="w-full bg-red-600 hover:bg-red-700"
+                disabled={isAddToCartDisabled}
+              >
+                {isAddToCartDisabled ? 'Select required options' : 'Add to Cart'}
+              </Button>
             </div>
           </div>
         </div>

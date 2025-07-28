@@ -5,6 +5,8 @@ export type Category = {
   description: string | null;
   image_url: string | null;
   created_at: string;
+  addons_available: boolean;
+  meal_options_available: boolean;
 };
 
 export type MenuItem = {
