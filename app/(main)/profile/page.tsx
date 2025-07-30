@@ -151,7 +151,7 @@ export default function ProfilePage() {
 
   if (loading) {
     return (
-      <div className="container mx-auto py-10">
+      <div className="container mt-16  mx-auto py-10">
         <Card>
           <CardHeader>
             <CardTitle>Loading profile...</CardTitle>
@@ -162,8 +162,9 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="container mx-auto py-10">
+    <div className="container mt-16 mx-auto grid md:grid-cols-2  gap-4 py-10">
       {/* Royalty Points Card */}
+      <div>
       <div className="mb-8">
         <RoyaltyPointsCard points={royaltyPoints} isLoading={loading} />
       </div>
@@ -172,6 +173,8 @@ export default function ProfilePage() {
       <div className="mb-8">
         <PointsHistory />
       </div>
+      </div>
+   
       
       <Card>
         <CardHeader>

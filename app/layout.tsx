@@ -1,15 +1,14 @@
+export const dynamic = "force-dynamic";
+
+
 import './globals.css';
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import { Toaster } from 'sonner';
-import { Navbar } from '@/components/layout/navbar';
-import { Footer } from '@/components/layout/footer';
 import { AuthProvider } from '@/context/auth-context';
 import { CartProvider } from '@/context/cart-context';
 import { createServerComponentClient } from '@supabase/auth-helpers-nextjs';
 import { cookies } from 'next/headers';
-import Loader from '@/components/ui/loader';
-
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
