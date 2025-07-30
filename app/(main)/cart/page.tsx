@@ -6,7 +6,7 @@ import { Separator } from '@/components/ui/separator';
 import { ClientCartItems } from './client-cart-items';
 
 export const metadata = {
-  title: 'Shopping Cart | BurgerBliss',
+  title: 'Shopping Cart | Bunhub Burgers',
   description: 'View and manage items in your shopping cart',
 };
 

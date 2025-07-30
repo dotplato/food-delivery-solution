@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { useAuth } from '@/context/auth-context';
 import { supabase } from '@/lib/supabase/client';
-import { Order, OrderItem, MenuItem } from '@/lib/types';
+import { Order, MenuItem } from '@/lib/types';
 
 export function ClientOrderDetails() {
   const params = useParams();
@@ -19,7 +19,7 @@ export function ClientOrderDetails() {
   const { user } = useAuth();
   const router = useRouter();
   const [order, setOrder] = useState<Order | null>(null);
-  const [orderItems, setOrderItems] = useState<OrderItem[]>([]);
+  const [orderItems, setOrderItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -52,24 +52,9 @@ export function ClientOrderDetails() {
 
       setOrder(orderData);
 
-      // Fetch order items with menu items
-      const { data: itemsData, error: itemsError } = await supabase
-        .from('order_items')
-        .select(`
-          *,
-          menu_item:menu_items(*)
-        `)
-        .eq('order_id', id);
-
-      if (itemsError) throw itemsError;
-      
-      // Transform the data to match OrderItem type
-      const transformedItems = (itemsData || []).map(item => ({
-        ...item,
-        menu_item: item.menu_item as MenuItem | undefined
-      }));
-      
-      setOrderItems(transformedItems);
+      // Use metadata from the order instead of fetching from order_items
+      const metadata = orderData.metadata || [];
+      setOrderItems(metadata);
     } catch (error) {
       console.error('Error fetching order:', error);
     } finally {
@@ -141,31 +126,43 @@ export function ClientOrderDetails() {
                 <div>
                   <h3 className="font-semibold mb-2">Order Items</h3>
                   <div className="space-y-4">
-                    {orderItems.map((item) => (
-                      <div key={item.id} className="flex border-b pb-4">
+                    {orderItems.map((item, index) => (
+                      <div key={index} className="flex border-b pb-4">
                         <div className="relative w-16 h-16 rounded-md overflow-hidden flex-shrink-0">
-                          {item.menu_item?.image_url ? (
-                            <Image
-                              src={item.menu_item.image_url}
-                              alt={item.menu_item.name}
-                              fill
-                              className="object-cover"
-                              unoptimized
-                            />
-                          ) : (
-                            <div className="w-full h-full bg-muted flex items-center justify-center">
-                              <span className="text-xs text-muted-foreground">No image</span>
-                            </div>
-                          )}
+                          {/* Note: We don't have image_url in metadata, so showing placeholder */}
+                          <div className="w-full h-full bg-muted flex items-center justify-center">
+                            <span className="text-xs text-muted-foreground">Item</span>
+                          </div>
                         </div>
                         <div className="ml-4 flex-grow">
-                          <p className="font-medium">{item.menu_item?.name || 'Unknown Item'}</p>
+                          <p className="font-medium">{item.name || 'Unknown Item'}</p>
                           <div className="flex justify-between mt-1">
                             <p className="text-sm text-muted-foreground">
                               Qty: {item.quantity} x ${item.price.toFixed(2)}
                             </p>
                             <p className="font-medium">${(item.quantity * item.price).toFixed(2)}</p>
                           </div>
+                          {/* Display options if available */}
+                          {item.options && (
+                            <div className="text-xs text-muted-foreground mt-1">
+                              {item.options.selectedOption && (
+                                <div>• Option: {item.options.selectedOption.name}</div>
+                              )}
+                              {item.options.selectedAddons && item.options.selectedAddons.length > 0 && (
+                                <div>
+                                  • Addons: {item.options.selectedAddons.map((addon: any) => addon.name).join(', ')}
+                                </div>
+                              )}
+                              {item.options.selectedMealOptions && item.options.selectedMealOptions.length > 0 && (
+                                <div>
+                                  • Meal Options: {item.options.selectedMealOptions.map((meal: any) => meal.name).join(', ')}
+                                </div>
+                              )}
+                              {item.options.selectedSauce && (
+                                <div>• Sauce: {item.options.selectedSauce.name}</div>
+                              )}
+                            </div>
+                          )}
                         </div>
                       </div>
                     ))}
@@ -178,7 +175,7 @@ export function ClientOrderDetails() {
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Subtotal</span>
                       <span>
-                        ${(order.total - order.delivery_fee).toFixed(2)}
+                        ${(order.order_total - order.delivery_fee).toFixed(2)}
                       </span>
                     </div>
                     <div className="flex justify-between">
@@ -188,7 +185,7 @@ export function ClientOrderDetails() {
                     <Separator className="my-2" />
                     <div className="flex justify-between font-semibold">
                       <span>Total</span>
-                      <span>${order.total.toFixed(2)}</span>
+                      <span>${order.order_total.toFixed(2)}</span>
                     </div>
                   </div>
                 </div>

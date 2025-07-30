@@ -24,7 +24,7 @@ import {
 } from "@/components/ui/chart";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts";
 import { supabase } from "@/lib/supabase/client";
-import { Order, OrderItem, MenuItem } from "@/lib/types";
+import { Order, MenuItem } from "@/lib/types";
 import Loader from "@/components/ui/loader";
 import {
   Select,
@@ -87,22 +87,23 @@ export default function AnalyticsPage() {
   const fetchSalesData = async () => {
     setLoading(true);
 
-    const { data: orderItems, error: itemsError } = await supabase
-      .from("order_items")
+    const { data: orders, error: ordersError } = await supabase
+      .from("orders")
       .select(`
-        quantity,
-        price,
-        menu_items!inner(id, name, image_url),
-        orders!inner(created_at, status, order_total)
+        id,
+        created_at,
+        status,
+        order_total,
+        metadata
       `);
 
-    if (itemsError) {
-      console.error("Error fetching sales data:", itemsError);
+    if (ordersError) {
+      console.error("Error fetching sales data:", ordersError);
       setLoading(false);
       return;
     }
 
-    if (!orderItems || orderItems.length === 0) {
+    if (!orders || orders.length === 0) {
       setSalesData([]);
       setLoading(false);
       return;
@@ -110,35 +111,37 @@ export default function AnalyticsPage() {
 
     const aggregatedData: { [key: string]: SalesData } = {};
 
-    for (const item of orderItems) {
-      if (!item.menu_items || !item.orders) continue;
+    for (const order of orders) {
+      if (!order.metadata || !Array.isArray(order.metadata)) continue;
 
-      const key = item.menu_items.id;
-      if (!aggregatedData[key]) {
-        aggregatedData[key] = {
-          product_id: item.menu_items.id,
-          product_name: item.menu_items.name,
-          image_url: item.menu_items.image_url,
-          total_sold: 0,
-          revenue: 0,
-          sales_over_time: [],
-        };
-      }
+      for (const item of order.metadata) {
+        const key = item.menu_item_id;
+        if (!aggregatedData[key]) {
+          aggregatedData[key] = {
+            product_id: item.menu_item_id,
+            product_name: item.name,
+            image_url: null, // We don't have image_url in metadata
+            total_sold: 0,
+            revenue: 0,
+            sales_over_time: [],
+          };
+        }
 
-      aggregatedData[key].total_sold += item.quantity;
-      aggregatedData[key].revenue += item.quantity * item.price;
+        aggregatedData[key].total_sold += item.quantity;
+        aggregatedData[key].revenue += item.quantity * item.price;
 
-      const date = new Date(item.orders.created_at).toISOString().split("T")[0];
-      const timeEntry = aggregatedData[key].sales_over_time.find(
-        (t) => t.date === date
-      );
-      if (timeEntry) {
-        timeEntry.count += item.quantity;
-      } else {
-        aggregatedData[key].sales_over_time.push({
-          date,
-          count: item.quantity,
-        });
+        const date = new Date(order.created_at).toISOString().split("T")[0];
+        const timeEntry = aggregatedData[key].sales_over_time.find(
+          (t) => t.date === date
+        );
+        if (timeEntry) {
+          timeEntry.count += item.quantity;
+        } else {
+          aggregatedData[key].sales_over_time.push({
+            date,
+            count: item.quantity,
+          });
+        }
       }
     }
     

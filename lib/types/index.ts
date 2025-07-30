@@ -111,16 +111,3 @@ export type MealOption = {
   price_adjustment: number;
   created_at: string;
 };
-
-export type OrderItemOption = {
-  id: string;
-  order_item_id: string;
-  option_id: string | null;
-  addon_id: string | null;
-  meal_option_id: string | null;
-  price_adjustment: number;
-  created_at: string;
-  option?: MenuItemOption;
-  addon?: MenuItemAddon;
-  meal_option?: MealOption;
-};

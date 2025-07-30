@@ -86,13 +86,13 @@ export function MenuItemDialog({ item, category, open, onOpenChange, onAddToCart
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
+    <Dialog open={open} onOpenChange={onOpenChange} >
+      <DialogContent className="max-w-2xl max-h-[600px] overflow-auto ">
         <DialogHeader>
-          <DialogTitle className="text-2xl font-bold">{item.name}</DialogTitle>
+          <DialogTitle className="text-2xl  font-bold">{item.name}</DialogTitle>
         </DialogHeader>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="relative h-64 rounded-lg overflow-hidden">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 ">
+          <div className="relative h-64 rounded-lg sm:sticky bg-white top-0 overflow-hidden">
             {item.image_url ? (
               <Image
                 src={item.image_url}
@@ -108,101 +108,104 @@ export function MenuItemDialog({ item, category, open, onOpenChange, onAddToCart
             )}
           </div>
 
-          <div className="space-y-6">
-            <p className="text-muted-foreground">{item.description}</p>
-
-            {/* Addons */}
-            {showAddons && addons.length > 0 && (
-              <div className="space-y-4">
-                <h3 className="font-semibold">Addons</h3>
-                <div className="space-y-2">
-                  {addons.map((addon) => (
-                    <div key={addon.id} className="flex items-center space-x-2">
-                      <Checkbox
-                        checked={selectedAddons.some(a => a.id === addon.id)}
-                        onCheckedChange={(checked) => handleAddonChange(addon, checked as boolean)}
-                      />
-                      <Label>
-                        {addon.name}
-                          {addon.price_adjustment > 0 && (
-                          <span className="ml-2 text-muted-foreground">
-                              +${addon.price_adjustment.toFixed(2)}
-                            </span>
-                        )}
-                      </Label>
+          <div className="space-y-6 relative flex flex-col h-full min-h-0">
+            <div className="flex-1 min-h-0 overflow-auto pr-1">
+              <p className="text-muted-foreground">{item.description}</p>
+              {/* Addons */}
+              <div className='flex flex-col gap-5'>
+                {showAddons && addons.length > 0 && (
+                  <div className="space-y-4 ">
+                    <h3 className="font-semibold">Addons</h3>
+                    <div className="space-y-2">
+                      {addons.map((addon) => (
+                        <div key={addon.id} className="flex items-center space-x-2">
+                          <Checkbox
+                            checked={selectedAddons.some(a => a.id === addon.id)}
+                            onCheckedChange={(checked) => handleAddonChange(addon, checked as boolean)}
+                          />
+                          <Label>
+                            {addon.name}
+                            {addon.price_adjustment > 0 && (
+                              <span className="ml-2 text-muted-foreground">
+                                +${addon.price_adjustment.toFixed(2)}
+                              </span>
+                            )}
+                          </Label>
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Sauces (required, radio group) */}
-            {saucesForCategory.length > 0 && (
-              <div className="space-y-4">
-                <h3 className="font-semibold">Choose a Sauce <span className="text-red-600">*</span></h3>
-                      <RadioGroup
-                  value={selectedSauce?.id || ''}
-                  onValueChange={val => {
-                    const sauce = saucesForCategory.find(s => s.id === val);
-                    setSelectedSauce(sauce || null);
-                  }}
-                  className="space-y-2"
-                >
-                  {saucesForCategory.map((sauce) => (
-                    <div key={sauce.id} className="flex items-center space-x-2">
-                      <RadioGroupItem value={sauce.id} id={sauce.id} />
-                      <Label htmlFor={sauce.id}>{sauce.name}</Label>
-                    </div>
-                  ))}
-                </RadioGroup>
-              </div>
-            )}
-
-            {/* Meal Options */}
-            {showMealOptions && mealOptions.length > 0 && (
-              <div className="space-y-4">
-                <h3 className="font-semibold">Choose Style</h3>
-                <RadioGroup
-                  value={selectedStyle}
-                  onValueChange={val => setSelectedStyle(val as 'own' | 'meal')}
-                  className="space-y-2"
-                >
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="own" id="own" />
-                    <Label htmlFor="own">On its Own</Label>
                   </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="meal" id="meal" />
-                    <Label htmlFor="meal">Make it a Meal</Label>
-                  </div>
-                </RadioGroup>
-              </div>
-            )}
-            {showMealOptions && mealOptions.length > 0 && selectedStyle === 'meal' && (
-              <div className="space-y-4">
-                <h3 className="font-semibold">Meal Options</h3>
-                <div className="space-y-2">
-                  {mealOptions.map((option) => (
-                    <div key={option.id} className="flex items-center space-x-2">
-                      <Checkbox
-                        checked={selectedMealOptions.some(o => o.id === option.id)}
-                        onCheckedChange={(checked) => handleMealOptionChange(option, checked as boolean)}
-                      />
-                      <Label>
-                        {option.name}
-                          {option.price_adjustment > 0 && (
-                          <span className="ml-2 text-muted-foreground">
-                              +${option.price_adjustment.toFixed(2)}
-                            </span>
-                        )}
-                      </Label>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
+                )}
 
-            <div className="pt-4 border-t">
+                {/* Sauces (required, radio group) */}
+                {saucesForCategory.length > 0 && (
+                  <div className="space-y-4">
+                    <h3 className="font-semibold">Choose a Sauce <span className="text-red-600">*</span></h3>
+                    <RadioGroup
+                      value={selectedSauce?.id || ''}
+                      onValueChange={val => {
+                        const sauce = saucesForCategory.find(s => s.id === val);
+                        setSelectedSauce(sauce || null);
+                      }}
+                      className="space-y-2"
+                    >
+                      {saucesForCategory.map((sauce) => (
+                        <div key={sauce.id} className="flex items-center space-x-2">
+                          <RadioGroupItem value={sauce.id} id={sauce.id} />
+                          <Label htmlFor={sauce.id}>{sauce.name}</Label>
+                        </div>
+                      ))}
+                    </RadioGroup>
+                  </div>
+                )}
+
+                {/* Meal Options */}
+                {showMealOptions && mealOptions.length > 0 && (
+                  <div className="space-y-4">
+                    <h3 className="font-semibold">Choose Style</h3>
+                    <RadioGroup
+                      value={selectedStyle}
+                      onValueChange={val => setSelectedStyle(val as 'own' | 'meal')}
+                      className="space-y-2"
+                    >
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="own" id="own" />
+                        <Label htmlFor="own">On its Own</Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="meal" id="meal" />
+                        <Label htmlFor="meal">Make it a Meal</Label>
+                      </div>
+                    </RadioGroup>
+                  </div>
+                )}
+                {showMealOptions && mealOptions.length > 0 && selectedStyle === 'meal' && (
+                  <div className="space-y-4">
+                    <h3 className="font-semibold">Meal Options</h3>
+                    <div className="space-y-2">
+                      {mealOptions.map((option) => (
+                        <div key={option.id} className="flex items-center space-x-2">
+                          <Checkbox
+                            checked={selectedMealOptions.some(o => o.id === option.id)}
+                            onCheckedChange={(checked) => handleMealOptionChange(option, checked as boolean)}
+                          />
+                          <Label>
+                            {option.name}
+                            {option.price_adjustment > 0 && (
+                              <span className="ml-2 text-muted-foreground">
+                                +${option.price_adjustment.toFixed(2)}
+                              </span>
+                            )}
+                          </Label>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="pt-4 border-t bg-white z-10 sticky bottom-0 top-0 left-0 right-0">
               <div className="flex justify-between items-center mb-4">
                 <span className="font-semibold">Total</span>
                 <span className="text-xl font-bold">${calculateTotal().toFixed(2)}</span>

@@ -43,11 +43,6 @@ export default function GoogleMapPicker({ position, setPosition, onMapLoad }: { 
           position={{ lat: position[0], lng: position[1] }}
           draggable
           onDragEnd={onMarkerDragEnd}
-          icon={{
-            url: '/images/pin.png',
-            scaledSize: new window.google.maps.Size(32, 32),
-            anchor: new window.google.maps.Point(16, 32),
-          }}
         />
       )}
     </GoogleMap>

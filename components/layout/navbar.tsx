@@ -17,6 +17,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { PointsDisplay } from './points-display';
 
 export function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
@@ -106,11 +107,11 @@ export function Navbar() {
         {/* Center - Logo */}
         <div className="flex-1 flex justify-center">
           <Link href="/" className="text-2xl font-bold text-white" onClick={closeMenu}>
-            <Image src="/logos/main-logo.png" alt="BurgerBliss Logo" width={130} height={130} />
+            <Image src="/logos/main-logo.png" alt="Bunhub Burgers Logo" width={130} height={130} />
           </Link>
         </div>
 
-        {/* Right Side - Cart and Auth */}
+        {/* Right Side - Cart, Points, and Auth */}
         <div className="flex items-center space-x-4">
           <Link href="/cart">
             <Button variant="ghost" size="icon" className="relative text-white hover:text-red-500">
@@ -122,6 +123,9 @@ export function Navbar() {
               )}
             </Button>
           </Link>
+
+          {/* Points Display */}
+          <PointsDisplay />
 
           {user ? (
             <DropdownMenu>

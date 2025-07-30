@@ -1,7 +1,7 @@
 import { ClientOrderHistory } from './client-order-history';
 
 export const metadata = {
-  title: 'My Orders | BurgerBliss',
+  title: 'My Orders | Bunhub Burgers',
   description: 'View your order history and track current orders',
 };
 

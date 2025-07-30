@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { CheckCircle } from 'lucide-react';
 
 export const metadata = {
-  title: 'Order Success | BurgerBliss',
+  title: 'Order Success | Bunhub Burgers',
   description: 'Your order has been successfully placed',
 };
 

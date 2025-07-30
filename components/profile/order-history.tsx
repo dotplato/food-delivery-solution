@@ -33,7 +33,7 @@ const columns = [
   {
     accessorKey: 'total',
     header: 'Total',
-    cell: ({ row }: any) => <div>${row.original.total.toFixed(2)}</div>,
+    cell: ({ row }: any) => <div>${row.original.order_total.toFixed(2)}</div>,
   },
   {
     accessorKey: 'status',

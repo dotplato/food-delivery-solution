@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import dynamic from "next/dynamic";
 import { RESTAURANT_LOCATION } from "./LeafletMap";
+import { Button } from "../ui/button";
 
 const GoogleMapPicker = dynamic(() => import("./LeafletMap"), { ssr: false });
 
@@ -202,15 +203,26 @@ export function LocationDialog({ open, onClose, onSelect }: { open: boolean; onC
           </div>
         )}
         <div className="flex justify-end gap-2">
-          <button onClick={onClose} className="px-4 py-2 rounded bg-gray-200 hover:bg-gray-300">Cancel</button>
-          <button
+          <Button variant="outline" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button
             onClick={handleSave}
-            disabled={!position || !address || typeof deliveryDistance !== 'number' || !isWithinDeliveryArea}
-            className="px-4 py-2 rounded bg-red-600 text-white font-semibold disabled:opacity-60"
-            title={!isWithinDeliveryArea ? 'Delivery is not available for this location. Please select a location within 8 miles.' : ''}
+            disabled={
+              !position ||
+              !address ||
+              typeof deliveryDistance !== "number" ||
+              !isWithinDeliveryArea
+            }
+            className="bg-red-600 hover:bg-red-700 text-white font-semibold"
+            title={
+              !isWithinDeliveryArea
+                ? "Delivery is not available for this location. Please select a location within 8 miles."
+                : ""
+            }
           >
             Save Location
-          </button>
+          </Button>
         </div>
       </DialogContent>
     </Dialog>

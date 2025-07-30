@@ -19,7 +19,7 @@ export function Footer() {
             <Link href="/" className="mb-4 inline-block">
               <Image
                 src="/logos/logo-brown.png"
-                alt="Burger Bliss Logo"
+                alt="Bunhub Burgers logo"
                 width={300}
                 height={108}
                 className="h-32 w-auto"
@@ -37,16 +37,17 @@ export function Footer() {
               <li className="flex items-start">
                 <MapPin className="h-5 w-5 mr-2 text-red-500 flex-shrink-0 mt-0.5" />
                 <span className="text-gray-400">
-                  123 Burger Street, Foodville, NY 10001
+                10 Stephenson Place, Chesterfield, Chesterfield, S40 1XL
                 </span>
               </li>
               <li className="flex items-center">
                 <Phone className="h-5 w-5 mr-2 text-red-500 flex-shrink-0" />
-                <span className="text-gray-400">(123) 456-7890</span>
+                <span className="text-gray-400">01246461825
+                </span>
               </li>
               <li className="flex items-center">
                 <Mail className="h-5 w-5 mr-2 text-red-500 flex-shrink-0" />
-                <span className="text-gray-400">info@burgerbliss.com</span>
+                <span className="text-gray-400">info@Bunhub Burgers.com</span>
               </li>
             </ul>
           </div>
@@ -58,15 +59,15 @@ export function Footer() {
               <li className="flex items-center">
                 <Clock className="h-5 w-5 mr-2 text-red-500 flex-shrink-0" />
                 <div>
-                  <p >Monday - Friday</p>
-                  <p >11:00 AM - 10:00 PM</p>
+                  <p >Monday - Thursday & Sunday</p>
+                  <p >12:00 PM - 11:00 PM</p>
                 </div>
               </li>
               <li className="flex items-center">
                 <Clock className="h-5 w-5 mr-2 text-red-500 flex-shrink-0" />
                 <div>
-                  <p >Saturday - Sunday</p>
-                  <p >10:00 AM - 11:00 PM</p>
+                  <p >Friday - Saturday</p>
+                  <p >12:00 PM - 2:00 AM</p>
                 </div>
               </li>
             </ul>
@@ -83,7 +84,7 @@ export function Footer() {
 
         <div className="flex flex-col  text-gray-200  items-center">
           <p className=" text-sm">
-            &copy; {new Date().getFullYear()} BurgerBliss. All rights reserved.
+            &copy; {new Date().getFullYear()} Bunhub Burgers. All rights reserved.
           </p>
           <div className='flex gap-3 text-xs '>
           <Link href="/privacy" className=" hover:underline transition-colors">

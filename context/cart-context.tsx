@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { CartItem, MenuItem, MenuItemOption, MenuItemAddon, MealOption } from '@/lib/types';
 import { toast } from 'sonner';
+import { isRestaurantOpen } from '@/lib/restaurant-hours';
 
 interface CartContextType {
   items: CartItem[];
@@ -49,6 +50,12 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     selectedMealOptions?: MealOption[];
     selectedSauce?: any;
   }) => {
+    // Check if restaurant is open
+    if (!isRestaurantOpen()) {
+      toast.error('Sorry, the restaurant is currently closed. Please try again during our opening hours.');
+      return;
+    }
+
     setItems(currentItems => {
       // Check if item with same options already exists
       const existingItemIndex = currentItems.findIndex(

@@ -9,6 +9,7 @@ import { useCart } from '@/context/cart-context';
 import { MenuItemDialog } from './menu-item-dialog';
 import { Plus, Star } from 'lucide-react';
 import { useAuth } from '@/context/auth-context';
+import { isRestaurantOpen } from '@/lib/restaurant-hours';
 
 interface MenuItemProps {
   item: MenuItemType;
@@ -54,6 +55,13 @@ export function MenuItem({ item, category, addons, mealOptions, sauces, category
       }
       return;
     }
+    
+    if (!isRestaurantOpen()) {
+      // Show toast or alert that restaurant is closed
+      alert('Sorry, the restaurant is currently closed. Please try again during our opening hours.');
+      return;
+    }
+    
     setDialogOpen(true);
   };
 
@@ -61,21 +69,19 @@ export function MenuItem({ item, category, addons, mealOptions, sauces, category
     <>
       <Card className="overflow-hidden hover:shadow-lg transition-shadow duration-200 border-0 shadow-sm bg-white flex flex-col h-full">
         <div className="relative">
-          {item.image_url && (
-            <div className="relative h-40 w-full overflow-hidden">
-              <img
-                src={item.image_url}
-                alt={item.name}
-                className="object-cover w-full h-full transition-transform duration-200 hover:scale-105"
-              />
-              {item.featured && (
-                <Badge className="absolute top-2 left-2 bg-yellow-500 text-white border-0">
-                  <Star className="h-3 w-3 mr-1" />
-                  Featured
-                </Badge>
-              )}
-            </div>
-          )}
+          <div className="relative h-40 w-full overflow-hidden">
+            <img
+              src={item.image_url && item.image_url.trim() !== "" ? item.image_url : "/logos/logo-gray.png"}
+              alt={item.name}
+              className="object-cover w-full h-full transition-transform duration-200 hover:scale-105"
+            />
+            {item.featured && (
+              <Badge className="absolute top-2 left-2 bg-yellow-500 text-white border-0">
+                <Star className="h-3 w-3 mr-1" />
+                Featured
+              </Badge>
+            )}
+          </div>
         </div>
         <CardContent className="p-4 flex-1 flex flex-col">
           <div className="flex justify-between items-start mb-2">
@@ -89,12 +95,21 @@ export function MenuItem({ item, category, addons, mealOptions, sauces, category
         <CardFooter className="p-4 pt-0 mt-auto">
           <Button
             onClick={handleOpenDialog}
-            className="w-full bg-gray-100 hover:bg-red-700 hover:text-white text-foreground font-medium py-6 rounded-xl transition-colors duration-200"
-            disabled={!item.available}
+            className={`w-full font-medium py-6 rounded-xl transition-colors duration-200 ${
+              !item.available || !isRestaurantOpen()
+                ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                : 'bg-gray-100 hover:bg-red-700 hover:text-white text-foreground'
+            }`}
+            disabled={!item.available || !isRestaurantOpen()}
             size="sm"
           >
             <Plus className="h-4 w-4 mr-2" />
-            {item.available ? 'Add to Cart' : 'Not Available'}
+            {!item.available 
+              ? 'Not Available' 
+              : !isRestaurantOpen() 
+                ? 'Restaurant Closed' 
+                : 'Add to Cart'
+            }
           </Button>
         </CardFooter>
       </Card>

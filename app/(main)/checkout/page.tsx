@@ -16,11 +16,11 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { LocationDialog } from '@/components/location/LocationDialog';
-import { Loader2 } from 'lucide-react';
+import { ShoppingBag, Bike, Loader2, MapPin, Pencil, Trash } from 'lucide-react';
 import { supabase } from '@/lib/supabase/client';
+import { PointsSection } from '@/components/checkout/points-section';
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
-
 type OrderType = 'delivery' | 'pickup';
 type PaymentMethod = 'card' | 'cod';
 
@@ -218,18 +218,22 @@ export default function CheckoutPage() {
 
       if (orderError) throw orderError;
 
-      const orderItems = pendingOrder.items.map((item) => ({
-        order_id: orderData.id,
-        menu_item_id: item.id,
-        quantity: item.quantity,
-        price: item.price,
-      }));
+      // Add points earned from the order
+      if (orderData && user?.id) {
+        const pointsEarned = Math.floor(pendingOrder.order_total * 10); // 10 points per $1
+        if (pointsEarned > 0) {
+          // Insert new transaction record for points earned
+          const { error: insertError } = await supabase.from('royalty_points').insert({
+            user_id: user.id,
+            points_earned: pointsEarned,
+            points_spent: 0
+          });
 
-      const { error: itemsError } = await supabase
-        .from("order_items")
-        .insert(orderItems);
-
-      if (itemsError) throw itemsError;
+          if (insertError) {
+            console.error('Error adding points earned:', insertError);
+          }
+        }
+      }
 
       toast.success("Order placed successfully!");
       clearCart();
@@ -286,26 +290,52 @@ export default function CheckoutPage() {
 
       if (orderError) throw orderError;
 
-      const orderItems = pendingOrder.items.map((item) => ({
-        order_id: orderData.id,
-        menu_item_id: item.id,
-        quantity: item.quantity,
-        price: item.price,
-      }));
+      // Handle royalty points
+      if (orderData) {
+        console.log('Processing royalty points for order:', orderData.id);
+        console.log('Points to redeem:', pointsToRedeem);
+        console.log('Points discount:', pointsDiscount);
+        
+        // Deduct points if any were redeemed
+        if (pointsToRedeem > 0 && user?.id) {
+          console.log('Deducting points:', pointsToRedeem);
+          
+          // Insert new transaction record for points spent
+          const { error: insertError } = await supabase.from('royalty_points').insert({
+            user_id: user.id,
+            points_earned: 0,
+            points_spent: pointsToRedeem
+          });
 
-      const { error: itemsError } = await supabase
-        .from("order_items")
-        .insert(orderItems);
+          if (insertError) {
+            console.error('Error updating royalty points:', insertError);
+          } else {
+            console.log('Successfully deducted points');
+          }
+        }
 
-      if (itemsError) throw itemsError;
+        // Add points earned from the order (based on the actual amount paid)
+        const pointsEarned = Math.floor((pendingOrder.order_total - pointsDiscount) * 10); // 10 points per $1
+        console.log('Points to earn:', pointsEarned);
+        console.log('Order total:', pendingOrder.order_total);
+        console.log('Points discount:', pointsDiscount);
+        
+        if (pointsEarned > 0 && user?.id) {
+          console.log('Adding points earned:', pointsEarned);
+          
+          // Insert new transaction record for points earned
+          const { error: insertError } = await supabase.from('royalty_points').insert({
+            user_id: user.id,
+            points_earned: pointsEarned,
+            points_spent: 0
+          });
 
-      // Deduct points spent if any
-      if (pointsToRedeem > 0 && user?.id) {
-        await supabase.from('royalty_points').insert({
-          user_id: user.id,
-          points_earned: 0,
-          points_spent: pointsToRedeem,
-        });
+          if (insertError) {
+            console.error('Error adding points earned:', insertError);
+          } else {
+            console.log('Successfully added points earned');
+          }
+        }
       }
 
       toast.success("Order placed successfully!");
@@ -333,15 +363,37 @@ export default function CheckoutPage() {
                 <RadioGroup
                   value={orderType}
                   onValueChange={(value) => setOrderType(value as OrderType)}
-                  className="space-y-4"
+                  className="flex flex-col gap-4"
                 >
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="delivery" id="delivery" />
-                    <Label htmlFor="delivery">Delivery</Label>
+                  <div
+                    className={`
+                      flex items-center gap-4 p-4 rounded-lg shadow-md border transition
+                      cursor-pointer bg-white
+                      ${orderType === 'delivery' ? 'border-gray-500' : 'border-gray-200 hover:border-gray-300'}
+                    `}
+                    onClick={() => setOrderType('delivery')}
+                  >
+                    <RadioGroupItem value="delivery" id="delivery" className="h-5 w-5" />
+                    <span className="flex items-center gap-2">
+                      {/* Delivery Icon */}
+                      <Bike className="h-6 w-6 text-blue-500" />
+                      <Label htmlFor="delivery" className="text-lg font-medium ">Delivery</Label>
+                    </span>
                   </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="pickup" id="pickup" />
-                    <Label htmlFor="pickup">Pickup</Label>
+                  <div
+                    className={`
+                      flex items-center gap-4 p-4 rounded-lg shadow-md border transition
+                      cursor-pointer bg-white
+                      ${orderType === 'pickup' ? 'border-gray-500' : 'border-gray-200 hover:border-gray-300'}
+                    `}
+                    onClick={() => setOrderType('pickup')}
+                  >
+                    <RadioGroupItem value="pickup" id="pickup" className="h-5 w-5" />
+                    <span className="flex items-center gap-2">
+                      {/* Pickup Icon */}
+                      <ShoppingBag className="h-6 w-6 text-green-500" />
+                      <Label htmlFor="pickup" className="text-lg font-medium">Pickup</Label>
+                    </span>
                   </div>
                 </RadioGroup>
                 <Button 
@@ -390,28 +442,69 @@ export default function CheckoutPage() {
                   {orderType === 'delivery' && (
                     <>
                       <div>
-                        <button
-                          type="button"
-                          className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded"
-                          onClick={() => setLocationDialogOpen(true)}
-                        >
-                          {selectedLocation ? 'Change Address' : 'Select Address'}
-                        </button>
-                      </div>
-                      {selectedLocation && (
-                        <div className="bg-gray-100 border rounded p-3 text-sm">
-                          <div><b>Selected Address:</b> {selectedLocation.address}</div>
+                        <div className="flex items-center bg-gray-100 border rounded p-3 text-sm mt-2 gap-3 justify-between">
+                          <div className="flex items-center gap-2">
+                            {/* Lucide MapPin icon for address display */}
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 21s-6-5.686-6-10A6 6 0 0112 3a6 6 0 016 6c0 4.314-6 10-6 10z" />
+                              <circle cx="12" cy="9" r="2.5" fill="currentColor" />
+                            </svg>
+                            <div>
+                              {selectedLocation ? (
+                                <>
+                                  <b>Selected Address:</b> {selectedLocation.address}
+                                </>
+                              ) : (
+                                <p>No address selected</p>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex gap-1">
+                            {selectedLocation ? (
+                              <>
+                                <button
+                                  type="button"
+                                  className="p-2 rounded hover:bg-blue-100 text-blue-600 transition"
+                                  title="Edit address"
+                                  onClick={() => setLocationDialogOpen(true)}
+                                >
+                                 <Pencil className='h-5 w-5' />
+                                </button>
+                                <button
+                                  type="button"
+                                  className="p-2 rounded hover:bg-red-100 text-red-600 transition"
+                                  title="Delete address"
+                                  onClick={() => setSelectedLocation(null)}
+                                >
+                                  {/* Trash icon */}
+                                <Trash className='h-5 w-5' />
+                                </button>
+                              </>
+                            ) : (
+                              <button
+                                type="button"
+                                className="p-2 flex gap-2 rounded hover:bg-blue-100 text-blue-600 transition"
+                                title="Select address"
+                                onClick={() => setLocationDialogOpen(true)}
+                              >
+                                {/* Bike icon as a placeholder for select */}
+                                <MapPin className="h-5 w-5" />
+                                Select Address
+                              </button>
+                            )}
+                          </div>
                         </div>
-                      )}
-                      {addressError && <div className="text-red-600 text-sm">{addressError}</div>}
+                      </div>
+                      {addressError && <div className="text-red-600 text-sm mt-1">{addressError}</div>}
                     </>
                   )}
-                  <button
+                  <Button
                     type="submit"
-                    className="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-3 rounded-lg mt-2 transition"
+                    className="w-full mt-2"
+                    
                   >
                     Continue to Payment
-                  </button>
+                  </Button>
                 </form>
                 {orderType === 'delivery' && (
                   <LocationDialog
@@ -427,38 +520,58 @@ export default function CheckoutPage() {
               <div className="bg-card border rounded-lg p-6">
                 <h2 className="text-xl font-semibold mb-4">Payment</h2>
                 <Separator className="mb-6" />
-                {/* Redeem Points Option */}
-                {userPoints > 0 && (
-                  <div className="mb-4 flex items-center space-x-2">
-                    <input
-                      type="checkbox"
-                      id="redeem-points"
-                      checked={redeemPoints}
-                      onChange={e => setRedeemPoints(e.target.checked)}
-                    />
-                    <label htmlFor="redeem-points" className="cursor-pointer">
-                      Redeem points ({userPoints} points available — ${(userPoints / 100).toFixed(2)} off)
-                    </label>
-                  </div>
-                )}
-                {/* Show discount if redeeming */}
-                {redeemPoints && pointsDiscount > 0 && (
-                  <div className="mb-4 text-green-700 font-semibold">
-                    Applying {pointsToRedeem} points for ${pointsDiscount.toFixed(2)} off
-                  </div>
-                )}
+                
+                {/* Beautiful Points Section */}
+                <div className="mb-6">
+                  <PointsSection
+                    userPoints={userPoints}
+                    redeemPoints={redeemPoints}
+                    pointsToRedeem={pointsToRedeem}
+                    pointsDiscount={pointsDiscount}
+                    total={total}
+                    onRedeemChange={setRedeemPoints}
+                  />
+                </div>
                 <RadioGroup
                   value={paymentMethod}
                   onValueChange={(value) => setPaymentMethod(value as PaymentMethod)}
-                  className="mb-6 space-y-2"
+                  className="mb-6 flex flex-col gap-3"
                 >
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="card" id="card" />
-                    <Label htmlFor="card">Credit / Debit Card</Label>
+                  <div
+                    className={`
+                      flex items-center gap-4 p-4 rounded-lg shadow-md border transition
+                      cursor-pointer bg-white
+                      ${paymentMethod === 'card' ? 'border-red-500 ring-2 ring-red-200' : 'border-gray-200 hover:border-gray-300'}
+                    `}
+                    onClick={() => setPaymentMethod('card')}
+                  >
+                    <RadioGroupItem value="card" id="card" className="h-5 w-5" />
+                    <span className="flex items-center gap-2">
+                      {/* Card Icon */}
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <rect x="2" y="6" width="20" height="12" rx="2" strokeWidth={2} stroke="currentColor" fill="none"/>
+                        <path d="M2 10h20" strokeWidth={2} stroke="currentColor" />
+                      </svg>
+                      <Label htmlFor="card" className="text-lg font-medium">Credit / Debit Card</Label>
+                    </span>
                   </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="cod" id="cod" />
-                    <Label htmlFor="cod">Cash on Delivery</Label>
+                  <div
+                    className={`
+                      flex items-center gap-4 p-4 rounded-lg shadow-md border transition
+                      cursor-pointer bg-white
+                      ${paymentMethod === 'cod' ? 'border-red-500 ring-2 ring-red-200' : 'border-gray-200 hover:border-gray-300'}
+                    `}
+                    onClick={() => setPaymentMethod('cod')}
+                  >
+                    <RadioGroupItem value="cod" id="cod" className="h-5 w-5" />
+                    <span className="flex items-center gap-2">
+                      {/* Cash Icon */}
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <rect x="3" y="7" width="18" height="10" rx="2" strokeWidth={2} stroke="currentColor" fill="none"/>
+                        <circle cx="12" cy="12" r="2.5" strokeWidth={2} stroke="currentColor" fill="none"/>
+                      </svg>
+                      <Label htmlFor="cod" className="text-lg font-medium">Cash on Delivery</Label>
+                    </span>
                   </div>
                 </RadioGroup>
 
@@ -475,7 +588,10 @@ export default function CheckoutPage() {
                     </p>
                     <Button
                       className="w-full"
-                      onClick={() => handleCodOrderWithPoints(pointsToRedeem, pointsDiscount)}
+                      onClick={() => redeemPoints && pointsToRedeem > 0 
+                        ? handleCodOrderWithPoints(pointsToRedeem, pointsDiscount)
+                        : handleCodOrder()
+                      }
                       disabled={isProcessingCod}
                     >
                       {isProcessingCod ? (
@@ -506,14 +622,19 @@ export default function CheckoutPage() {
               </div>
               {/* Points Discount and Updated Total */}
               {redeemPoints && pointsDiscount > 0 && (
-                <div className="mt-4">
-                  <div className="flex justify-between text-green-700 font-semibold">
-                    <span>Points Discount</span>
-                    <span>- ${pointsDiscount.toFixed(2)}</span>
+                <div className="mt-4 p-4 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
+                        <span className="text-white text-xs font-bold">✓</span>
+                      </div>
+                      <span className="font-semibold text-green-700">Points Discount Applied</span>
+                    </div>
+                    <span className="text-lg font-bold text-green-700">-${pointsDiscount.toFixed(2)}</span>
                   </div>
-                  <div className="flex justify-between text-lg font-bold mt-2">
-                    <span>Total after Discount</span>
-                    <span>${(total - pointsDiscount).toFixed(2)}</span>
+                  <div className="flex justify-between items-center pt-2 border-t border-green-200">
+                    <span className="font-medium text-gray-700">Final Total</span>
+                    <span className="text-xl font-bold text-gray-900">${(total - pointsDiscount).toFixed(2)}</span>
                   </div>
                 </div>
               )}

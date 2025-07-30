@@ -5,7 +5,7 @@ import { ContactForm } from './contact-form';
 import Loader from '@/components/ui/loader';
 
 export const metadata = {
-  title: 'Contact Us | BurgerBliss',
+  title: 'Contact Us | Bunhub Burgers',
   description: 'Get in touch with our team for inquiries, feedback, or support',
 };
 
@@ -34,7 +34,7 @@ export default function ContactPage() {
                   <Mail className="h-5 w-5 text-red-600 mt-1 flex-shrink-0" />
                   <div className="ml-4">
                     <h3 className="font-medium">Email</h3>
-                <p className="text-muted-foreground">info@burgerbliss.com</p>
+                <p className="text-muted-foreground">info@Bunhub Burgers.com</p>
                   </div>
                 </div>
                 <div className="flex items-start">

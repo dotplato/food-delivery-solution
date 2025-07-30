@@ -120,48 +120,36 @@ export default function AdminDashboard() {
       // Fetch top grossing products for today
       const { data: todaysOrders, error: ordersError } = await supabase
         .from('orders')
-        .select('id')
+        .select('id, metadata')
         .eq('status', 'completed')
         .gte('created_at', today);
 
       if (ordersError) {
         console.error("Error fetching today's orders for top products:", ordersError);
       } else if (todaysOrders && todaysOrders.length > 0) {
-        const orderIds = todaysOrders.map(o => o.id);
+        const productSales = todaysOrders.reduce<Record<string, TopProduct>>((acc, order) => {
+          if (!order.metadata || !Array.isArray(order.metadata)) return acc;
 
-        const { data: orderItems, error: itemsError } = await supabase
-          .from('order_items')
-          .select('quantity, menu_items!inner(id, name, image_url)')
-          .in('order_id', orderIds);
-
-        if (itemsError) {
-          console.error("Error fetching order items for top products:", itemsError);
-        } else if (orderItems && orderItems.length > 0) {
-          const productSales = orderItems.reduce<Record<string, TopProduct>>((acc, item) => {
-            const menuItem = item.menu_items as any;
-            if (!menuItem) return acc;
-
-            const key = menuItem.id;
+          for (const item of order.metadata) {
+            const key = item.menu_item_id;
             if (!acc[key]) {
               acc[key] = {
-                id: menuItem.id,
-                name: menuItem.name,
-                image_url: menuItem.image_url,
+                id: item.menu_item_id,
+                name: item.name,
+                image_url: null, // We don't have image_url in metadata
                 total_sold: 0
               };
             }
             acc[key].total_sold += item.quantity;
-            return acc;
-          }, {});
+          }
+          return acc;
+        }, {});
 
-          const sortedProducts = Object.values(productSales)
-            .sort((a, b) => b.total_sold - a.total_sold)
-            .slice(0, 3);
+        const sortedProducts = Object.values(productSales)
+          .sort((a, b) => b.total_sold - a.total_sold)
+          .slice(0, 3);
 
-          setTopProducts(sortedProducts);
-        } else {
-          setTopProducts([]);
-        }
+        setTopProducts(sortedProducts);
       } else {
         setTopProducts([]);
       }

@@ -13,7 +13,7 @@ import Loader from '@/components/ui/loader';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'BurgerBliss | Delicious Burgers Delivered',
+  title: 'Bunhub Burgers',
   description: 'Order delicious burgers, sides, and drinks for delivery or pickup',
 };
 

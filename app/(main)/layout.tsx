@@ -9,7 +9,7 @@ export default function MainLayout({
 }) {
   return (
     <OrderTypeDialogProvider>
-      <Navbar />
+      <Navbar  />
       <main className="flex-grow">
         {children}
       </main>

@@ -1,7 +1,7 @@
 import { ClientOrderDetails } from './client-order-details';
 
 export const metadata = {
-  title: 'Order Details | BurgerBliss',
+  title: 'Order Details | Bunhub Burgers',
   description: 'View your order details and track its status',
 };
 

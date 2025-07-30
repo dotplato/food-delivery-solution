@@ -141,19 +141,52 @@ export function PaymentForm({ pendingOrder }: PaymentFormProps) {
 
       if (orderError) throw orderError;
 
-      // Add order items
-      const orderItems = pendingOrder.items.map(item => ({
-        order_id: orderData.id,
-        menu_item_id: item.id,
-        quantity: item.quantity,
-        price: item.price,
-      }));
+      // Handle royalty points
+      if (orderData) {
+        console.log('Payment form - Processing royalty points for order:', orderData.id);
+        console.log('Payment form - Points to redeem:', pendingOrder.pointsToRedeem);
+        console.log('Payment form - Points discount:', pendingOrder.pointsDiscount);
+        
+        // Deduct points if any were redeemed
+        if (pendingOrder.pointsToRedeem && pendingOrder.pointsToRedeem > 0) {
+          console.log('Payment form - Deducting points:', pendingOrder.pointsToRedeem);
+          
+          // Insert new transaction record for points spent
+          const { error: insertError } = await supabase.from('royalty_points').insert({
+            user_id: user.id,
+            points_earned: 0,
+            points_spent: pendingOrder.pointsToRedeem
+          });
 
-      const { error: itemsError } = await supabase
-        .from('order_items')
-        .insert(orderItems);
+          if (insertError) {
+            console.error('Payment form - Error updating royalty points:', insertError);
+          } else {
+            console.log('Payment form - Successfully deducted points');
+          }
+        }
 
-      if (itemsError) throw itemsError;
+        // Add points earned from the order (based on the actual amount paid)
+        const pointsEarned = Math.floor(discountedTotal * 10); // 10 points per $1
+        console.log('Payment form - Points to earn:', pointsEarned);
+        console.log('Payment form - Discounted total:', discountedTotal);
+        
+        if (pointsEarned > 0) {
+          console.log('Payment form - Adding points earned:', pointsEarned);
+          
+          // Insert new transaction record for points earned
+          const { error: insertError } = await supabase.from('royalty_points').insert({
+            user_id: user.id,
+            points_earned: pointsEarned,
+            points_spent: 0
+          });
+
+          if (insertError) {
+            console.error('Payment form - Error adding points earned:', insertError);
+          } else {
+            console.log('Payment form - Successfully added points earned');
+          }
+        }
+      }
     } catch (error) {
       console.error('Error creating order:', error);
       throw error;

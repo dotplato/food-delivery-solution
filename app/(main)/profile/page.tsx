@@ -11,6 +11,8 @@ import { toast } from 'sonner';
 import { LocationDialog } from '@/components/location/LocationDialog';
 import { useAuth } from '@/context/auth-context';
 import { supabase } from '@/lib/supabase/client';
+import { RoyaltyPointsCard } from '@/components/profile/royalty-points-card';
+import { PointsHistory } from '@/components/profile/points-history';
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -162,16 +164,15 @@ export default function ProfilePage() {
   return (
     <div className="container mx-auto py-10">
       {/* Royalty Points Card */}
-      <Card className="mb-6">
-        <CardHeader>
-          <CardTitle>Royalty Points</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold">
-            {royaltyPoints !== null ? `${royaltyPoints} points` : 'Loading...'}
-          </div>
-        </CardContent>
-      </Card>
+      <div className="mb-8">
+        <RoyaltyPointsCard points={royaltyPoints} isLoading={loading} />
+      </div>
+      
+      {/* Points History */}
+      <div className="mb-8">
+        <PointsHistory />
+      </div>
+      
       <Card>
         <CardHeader>
           <CardTitle>Profile</CardTitle>

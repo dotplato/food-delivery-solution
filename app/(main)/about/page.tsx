@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 
 export const metadata = {
-  title: 'About Us | BurgerBliss',
+  title: 'About Us | Bunhub Burgers',
   description: 'Learn about our story, values, and commitment to quality food',
 };
 
@@ -12,7 +12,7 @@ export default function AboutPage() {
     <div className="pt-24 pb-16">
       <div className="container mx-auto px-4">
         <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold mb-4">About BurgerBliss</h1>
+          <h1 className="text-4xl font-bold mb-4">About Bunhub Burgers</h1>
           <p className="text-muted-foreground max-w-2xl mx-auto">
             Crafting delicious, memorable burger experiences since 2010
           </p>
@@ -22,7 +22,7 @@ export default function AboutPage() {
           <div>
             <h2 className="text-2xl font-bold mb-4">Our Story</h2>
             <p className="text-muted-foreground mb-4">
-              BurgerBliss began with a simple mission: to create the perfect burger. 
+              Bunhub Burgers began with a simple mission: to create the perfect burger. 
               Founded in 2010 by burger enthusiasts John and Sarah Miller, 
               we started as a small food truck serving handcrafted burgers with fresh, 
               locally-sourced ingredients.
@@ -33,7 +33,7 @@ export default function AboutPage() {
               growing ever since, but our commitment to quality has never wavered.
             </p>
             <p className="text-muted-foreground">
-              Today, BurgerBliss is known for creative recipes, premium ingredients, 
+              Today, Bunhub Burgers is known for creative recipes, premium ingredients, 
               and an unwavering dedication to customer satisfaction. Every burger 
               we serve is crafted with the same passion and attention to detail 
               that defined our humble beginnings.
@@ -43,7 +43,7 @@ export default function AboutPage() {
           <div className="relative h-96 rounded-lg overflow-hidden">
             <Image
               src="https://images.pexels.com/photos/1251198/pexels-photo-1251198.jpeg"
-              alt="BurgerBliss restaurant interior"
+              alt="Bunhub Burgers restaurant interior"
               fill
               className="object-cover"
               unoptimized

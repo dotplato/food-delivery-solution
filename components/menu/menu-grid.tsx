@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { RestaurantStatus } from './restaurant-status';
 
 export function MenuGrid() {
   const [categories, setCategories] = useState<Category[]>([]);
@@ -83,7 +84,12 @@ export function MenuGrid() {
   if (loading) return <MenuSkeleton />;
 
   return (
-    <div className="space-y-8 ">
+    <div className="space-y-8">
+      {/* Restaurant Status */}
+      <div className="mb-6">
+        <RestaurantStatus />
+      </div>
+      
       <div className="sticky top-20 z-10 bg-white/95 pt-10 backdrop-blur-sm border-b pb-4">
         <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
           <Button
