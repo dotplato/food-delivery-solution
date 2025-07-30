@@ -105,6 +105,20 @@ export function PaymentForm({ pendingOrder }: PaymentFormProps) {
     if (!user) return;
 
     try {
+      // Prepare metadata with all cart items and their options
+      const orderMetadata = pendingOrder.items.map(item => ({
+        menu_item_id: item.id,
+        name: item.name,
+        quantity: item.quantity,
+        price: item.price,
+        options: item.options || {
+          selectedOption: null,
+          selectedAddons: [],
+          selectedMealOptions: [],
+          selectedSauce: null
+        }
+      }));
+
       const { data: orderData, error: orderError } = await supabase
         .from('orders')
         .insert({
@@ -120,6 +134,7 @@ export function PaymentForm({ pendingOrder }: PaymentFormProps) {
           payment_status: 'paid',
           status: 'pending',
           order_type: pendingOrder.order_type, // Pass order type for admin
+          metadata: orderMetadata // Save all item details with options as JSON
         })
         .select()
         .single();

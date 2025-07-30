@@ -10,6 +10,7 @@ interface CartContextType {
     selectedOption?: MenuItemOption;
     selectedAddons: MenuItemAddon[];
     selectedMealOptions?: MealOption[];
+    selectedSauce?: any;
   }) => void;
   removeFromCart: (itemId: string) => void;
   updateQuantity: (itemId: string, quantity: number) => void;
@@ -46,6 +47,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     selectedOption?: MenuItemOption;
     selectedAddons: MenuItemAddon[];
     selectedMealOptions?: MealOption[];
+    selectedSauce?: any;
   }) => {
     setItems(currentItems => {
       // Check if item with same options already exists

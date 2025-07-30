@@ -180,6 +180,20 @@ export default function CheckoutPage() {
     setIsProcessingCod(true);
 
     try {
+      // Prepare metadata with all cart items and their options
+      const orderMetadata = pendingOrder.items.map(item => ({
+        menu_item_id: item.id,
+        name: item.name,
+        quantity: item.quantity,
+        price: item.price,
+        options: item.options || {
+          selectedOption: null,
+          selectedAddons: [],
+          selectedMealOptions: [],
+          selectedSauce: null
+        }
+      }));
+
       const orderPayload: any = {
         order_total: pendingOrder.order_total,
         delivery_address: pendingOrder.delivery_address,
@@ -189,6 +203,7 @@ export default function CheckoutPage() {
         payment_intent_id: null,
         payment_status: "cash_on_delivery",
         status: "pending",
+        metadata: orderMetadata // Save all item details with options as JSON
       };
 
       if (user?.id) {
@@ -233,6 +248,20 @@ export default function CheckoutPage() {
     setIsProcessingCod(true);
 
     try {
+      // Prepare metadata with all cart items and their options
+      const orderMetadata = pendingOrder.items.map(item => ({
+        menu_item_id: item.id,
+        name: item.name,
+        quantity: item.quantity,
+        price: item.price,
+        options: item.options || {
+          selectedOption: null,
+          selectedAddons: [],
+          selectedMealOptions: [],
+          selectedSauce: null
+        }
+      }));
+
       const orderPayload: any = {
         order_total: pendingOrder.order_total - pointsDiscount,
         delivery_address: pendingOrder.delivery_address,
@@ -242,6 +271,7 @@ export default function CheckoutPage() {
         payment_intent_id: null,
         payment_status: "cash_on_delivery",
         status: "pending",
+        metadata: orderMetadata // Save all item details with options as JSON
       };
 
       if (user?.id) {

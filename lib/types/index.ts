@@ -19,7 +19,12 @@ export type MenuItem = {
   available: boolean;
   featured: boolean;
   created_at: string;
-  options?: MenuItemOption[];
+  options?: {
+    selectedOption?: MenuItemOption;
+    selectedAddons: MenuItemAddon[];
+    selectedMealOptions?: MealOption[];
+    selectedSauce?: any;
+  };
   addons?: MenuItemAddon[];
   meal_options?: MealOption[];
 };
@@ -30,6 +35,7 @@ export type CartItem = MenuItem & {
     selectedOption?: MenuItemOption;
     selectedAddons: MenuItemAddon[];
     selectedMealOptions?: MealOption[];
+    selectedSauce?: any;
   };
 };
 
@@ -48,19 +54,10 @@ export type Order = {
   created_at: string;
   updated_at: string;
   points_discount?: number;
-  items?: OrderItem[];
+  metadata?: any[]; // Array of order items with their options/addons/sauces
 };
 
-export type OrderItem = {
-  id: string;
-  order_id: string;
-  menu_item_id: string | null;
-  quantity: number;
-  price: number;
-  created_at: string;
-  menu_item?: MenuItem;
-  options?: OrderItemOption[];
-};
+
 
 export type Profile = {
   id: string;
