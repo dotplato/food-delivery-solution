@@ -223,7 +223,7 @@ export function Navbar() {
                     <User className="h-5 w-5" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
+                <DropdownMenuContent align="end" className="z-[9999]">
                   <DropdownMenuItem asChild>
                     <Link href="/profile">My Profile</Link>
                   </DropdownMenuItem>
