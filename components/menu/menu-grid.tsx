@@ -4,47 +4,43 @@ import { useState, useEffect, useRef } from 'react';
 import { MenuItem } from './menu-item';
 import type { MenuItem as MenuItemType, Category } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
-import { supabase } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { RestaurantStatus } from './restaurant-status';
 
-export function MenuGrid() {
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [menuItems, setMenuItems] = useState<MenuItemType[]>([]);
-  const [addons, setAddons] = useState<any[]>([]);
-  const [mealOptions, setMealOptions] = useState<any[]>([]);
-  const [sauces, setSauces] = useState<any[]>([]);
-  const [categorySauces, setCategorySauces] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+type MenuGridProps = {
+  initialCategories: Category[];
+  initialMenuItems: MenuItemType[];
+  initialAddons: any[];
+  initialMealOptions: any[];
+  initialSauces: any[];
+  initialCategorySauces: any[];
+};
+
+export function MenuGrid({
+  initialCategories,
+  initialMenuItems,
+  initialAddons,
+  initialMealOptions,
+  initialSauces,
+  initialCategorySauces,
+}: MenuGridProps) {
+  // ✅ States initialized from pre-fetched data
+  const [categories, setCategories] = useState<Category[]>(initialCategories);
+  const [menuItems, setMenuItems] = useState<MenuItemType[]>(initialMenuItems);
+  const [addons, setAddons] = useState<any[]>(initialAddons);
+  const [mealOptions, setMealOptions] = useState<any[]>(initialMealOptions);
+  const [sauces, setSauces] = useState<any[]>(initialSauces);
+  const [categorySauces, setCategorySauces] = useState<any[]>(initialCategorySauces);
+  const [loading] = useState(false);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
+
   const categoryRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
 
-  useEffect(() => {
-    async function fetchAll() {
-      setLoading(true);
-      const [catRes, menuRes, addonsRes, mealOptionsRes, saucesRes, catSaucesRes] = await Promise.all([
-        supabase.from('categories').select('*').order('name'),
-        supabase.from('menu_items').select('*').eq('available', true).order('name'),
-        supabase.from('addons').select('*').order('name'),
-        supabase.from('meal_options').select('*').order('name'),
-        supabase.from('sauces').select('*').order('name'),
-        supabase.from('category_sauces').select('*'),
-      ]);
-      setCategories(catRes.data || []);
-      setMenuItems(menuRes.data || []);
-      setAddons(addonsRes.data || []);
-      setMealOptions(mealOptionsRes.data || []);
-      setSauces(saucesRes.data || []);
-      setCategorySauces(catSaucesRes.data || []);
-      setLoading(false);
-    }
-    fetchAll();
-  }, []);
-
+  // ✅ Intersection observer for highlighting active category
   useEffect(() => {
     if (loading || categories.length === 0) return;
 
@@ -56,7 +52,7 @@ export function MenuGrid() {
             if (categoryId) {
               setActiveCategory(categoryId);
 
-              // Auto-scroll the active category button into view
+              // Auto-scroll active category button into view
               const activeButton = scrollContainerRef.current?.querySelector(
                 `[data-category-btn="${categoryId}"]`
               );
@@ -114,36 +110,35 @@ export function MenuGrid() {
           ref={scrollContainerRef}
           className="flex gap-2 overflow-x-auto scrollbar-hide cursor-grab active:cursor-grabbing px-2 py-1 select-none"
           onMouseDown={(e) => {
-  const container = e.currentTarget as HTMLDivElement & {
-    isDown?: boolean;
-    startX?: number;
-    scrollLeftStart?: number;
-  };
-  container.isDown = true;
-  container.startX = e.pageX - container.offsetLeft;
-  container.scrollLeftStart = container.scrollLeft;
-}}
-onMouseLeave={(e) => {
-  const container = e.currentTarget as HTMLDivElement & { isDown?: boolean };
-  container.isDown = false;
-}}
-onMouseUp={(e) => {
-  const container = e.currentTarget as HTMLDivElement & { isDown?: boolean };
-  container.isDown = false;
-}}
-onMouseMove={(e) => {
-  const container = e.currentTarget as HTMLDivElement & {
-    isDown?: boolean;
-    startX?: number;
-    scrollLeftStart?: number;
-  };
-  if (!container.isDown) return;
-  e.preventDefault();
-  const x = e.pageX - container.offsetLeft;
-  const walk = (x - (container.startX ?? 0)) * 1;
-  container.scrollLeft = (container.scrollLeftStart ?? 0) - walk;
-}}
-
+            const container = e.currentTarget as HTMLDivElement & {
+              isDown?: boolean;
+              startX?: number;
+              scrollLeftStart?: number;
+            };
+            container.isDown = true;
+            container.startX = e.pageX - container.offsetLeft;
+            container.scrollLeftStart = container.scrollLeft;
+          }}
+          onMouseLeave={(e) => {
+            const container = e.currentTarget as HTMLDivElement & { isDown?: boolean };
+            container.isDown = false;
+          }}
+          onMouseUp={(e) => {
+            const container = e.currentTarget as HTMLDivElement & { isDown?: boolean };
+            container.isDown = false;
+          }}
+          onMouseMove={(e) => {
+            const container = e.currentTarget as HTMLDivElement & {
+              isDown?: boolean;
+              startX?: number;
+              scrollLeftStart?: number;
+            };
+            if (!container.isDown) return;
+            e.preventDefault();
+            const x = e.pageX - container.offsetLeft;
+            const walk = (x - (container.startX ?? 0)) * 1;
+            container.scrollLeft = (container.scrollLeftStart ?? 0) - walk;
+          }}
         >
           {/* All Items */}
           <Button
