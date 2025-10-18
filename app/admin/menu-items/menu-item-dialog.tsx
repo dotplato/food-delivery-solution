@@ -24,8 +24,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { supabase } from '@/lib/supabase/client';
 import { MenuItem, Category } from '@/lib/types';
+import { fetchCategories } from '@/lib/fetch/admin/menu-items-dialog'; 
 
 const formSchema = z.object({
   name: z.string().min(1, 'Name is required'),
@@ -68,6 +68,7 @@ export function MenuItemDialog({
     },
   });
 
+  // ✅ Reset form when editing or creating new
   useEffect(() => {
     if (item) {
       form.reset({
@@ -92,22 +93,13 @@ export function MenuItemDialog({
     }
   }, [item, form]);
 
+  // ✅ Fetch categories from helper
   useEffect(() => {
-    async function fetchCategories() {
-      try {
-        const { data, error } = await supabase
-          .from('categories')
-          .select('*')
-          .order('name');
-
-        if (error) throw error;
-        setCategories(data || []);
-      } catch (error) {
-        console.error('Error fetching categories:', error);
-      }
+    async function loadCategories() {
+      const data = await fetchCategories();
+      setCategories(data);
     }
-
-    fetchCategories();
+    loadCategories();
   }, []);
 
   const onSubmit = async (values: FormValues) => {
@@ -196,10 +188,7 @@ export function MenuItemDialog({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Category</FormLabel>
-                  <Select
-                    value={field.value}
-                    onValueChange={field.onChange}
-                  >
+                  <Select value={field.value} onValueChange={field.onChange}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Select a category" />
@@ -225,10 +214,7 @@ export function MenuItemDialog({
                 render={({ field }) => (
                   <FormItem className="flex items-center gap-2">
                     <FormControl>
-                      <Switch
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                      />
+                      <Switch checked={field.value} onCheckedChange={field.onChange} />
                     </FormControl>
                     <FormLabel>Available</FormLabel>
                   </FormItem>
@@ -241,10 +227,7 @@ export function MenuItemDialog({
                 render={({ field }) => (
                   <FormItem className="flex items-center gap-2">
                     <FormControl>
-                      <Switch
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                      />
+                      <Switch checked={field.value} onCheckedChange={field.onChange} />
                     </FormControl>
                     <FormLabel>Featured</FormLabel>
                   </FormItem>
@@ -269,4 +252,4 @@ export function MenuItemDialog({
       </DialogContent>
     </Dialog>
   );
-} 
+}
