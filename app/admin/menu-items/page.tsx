@@ -6,20 +6,23 @@ import { Plus, Filter, Pencil, Trash } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DataTable } from '@/components/ui/data-table';
 import { Badge } from '@/components/ui/badge';
-import { supabase } from '@/lib/supabase/client';
-import { MenuItem } from '@/lib/types';
-import type { Category } from '@/lib/types';
 import { MenuItemDialog } from './menu-item-dialog';
 import Loader from '@/components/ui/loader';
-
 import {
   DropdownMenu,
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuCheckboxItem,
 } from "@/components/ui/dropdown-menu";
-import { Checkbox } from "@/components/ui/checkbox";
 
+import { MenuItem, Category } from '@/lib/types';
+import {
+  fetchCategories,
+  fetchMenuItemsWithCategory,
+  addMenuItem,
+  updateMenuItem,
+  deleteMenuItem,
+} from '@/lib/fetch/admin/menu-items-helper'; // ✅ helper import
 
 const columns = [
   {
@@ -92,111 +95,62 @@ export default function MenuItemsPage() {
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
 
   useEffect(() => {
-    fetchCategories();
-    fetchMenuItems();
+    loadData();
   }, []);
 
-  const fetchCategories = async () => {
-    const { data, error } = await supabase
-      .from('categories')
-      .select('*')
-      .order('name');
-    if (!error) setCategories(data || []);
-  };
+  const loadData = async () => {
+    setLoading(true);
+    const [cats, items] = await Promise.all([
+      fetchCategories(),
+      fetchMenuItemsWithCategory(),
+    ]);
 
-  const fetchMenuItems = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('menu_items')
-        .select(`
-          *,
-          category:categories(*)
-        `)
-        .order('created_at', { ascending: false });
+    // Add actions directly to items
+    const itemsWithActions = items.map((item) => ({
+      ...item,
+      onEdit: (itm: MenuItem) => {
+        setSelectedItem(itm);
+        setDialogOpen(true);
+      },
+      onDelete: async (id: string) => {
+        if (confirm('Are you sure you want to delete this item?')) {
+          const success = await deleteMenuItem(id);
+          if (success) router.refresh();
+          else alert('Failed to delete menu item');
+        }
+      },
+    }));
 
-      if (error) throw error;
-
-      // Add action handlers to each item
-      const itemsWithActions = data.map((item) => ({
-        ...item,
-        onEdit: (item: MenuItem) => {
-          setSelectedItem(item);
-          setDialogOpen(true);
-        },
-        onDelete: async (id: string) => {
-          if (confirm('Are you sure you want to delete this item?')) {
-            try {
-              const { error } = await supabase
-                .from('menu_items')
-                .delete()
-                .eq('id', id);
-
-              if (error) throw error;
-              router.refresh();
-            } catch (error) {
-              console.error('Error deleting menu item:', error);
-              alert('Failed to delete menu item');
-            }
-          }
-        },
-      }));
-
-      setMenuItems(itemsWithActions);
-    } catch (error) {
-      console.error('Error fetching menu items:', error);
-    } finally {
-      setLoading(false);
-    }
+    setCategories(cats);
+    setMenuItems(itemsWithActions);
+    setLoading(false);
   };
 
   const handleSave = async (item: Partial<MenuItem>) => {
-    try {
-      if (selectedItem) {
-        // Update existing item
-        const { error } = await supabase
-          .from('menu_items')
-          .update({
-            name: item.name,
-            description: item.description,
-            price: item.price,
-            image_url: item.image_url,
-            category_id: item.category_id,
-            available: item.available,
-            featured: item.featured,
-          })
-          .eq('id', selectedItem.id);
+    let success = false;
+    if (selectedItem) {
+      success = await updateMenuItem(selectedItem.id, item);
+    } else {
+      success = await addMenuItem(item);
+    }
 
-        if (error) throw error;
-      } else {
-        // Create new item
-        const { error } = await supabase
-          .from('menu_items')
-          .insert({
-            name: item.name!,
-            description: item.description,
-            price: item.price!,
-            image_url: item.image_url,
-            category_id: item.category_id,
-            available: item.available ?? true,
-            featured: item.featured ?? false,
-          });
-
-        if (error) throw error;
-      }
-
+    if (success) {
       setDialogOpen(false);
       setSelectedItem(null);
       router.refresh();
-    } catch (error) {
-      console.error('Error saving menu item:', error);
+    } else {
       alert('Failed to save menu item');
     }
   };
 
-  // Filtered menu items
-  const filteredMenuItems = selectedCategories.length === 0
-    ? menuItems
-    : menuItems.filter(item => item.category_id && selectedCategories.includes(item.category_id));
+  const filteredMenuItems =
+    selectedCategories.length === 0
+      ? menuItems
+      : menuItems.filter(
+          (item) =>
+            item.category_id &&
+            selectedCategories.includes(item.category_id)
+        );
 
   return (
     <div>
@@ -214,47 +168,43 @@ export default function MenuItemsPage() {
       </div>
 
       {/* Category Filter */}
-    
-<div className="mb-4 flex justify-end">
-  <DropdownMenu>
-    <DropdownMenuTrigger asChild>
-      <Button variant="outline">
-        <Filter className="h-4 w-4 mr-2 text-muted-foreground" />
-        Filter by Category
-        {selectedCategories.length > 0 && (
-          <span className="ml-2 text-xs text-muted-foreground">
-            ({selectedCategories.length})
-          </span>
-        )}
-      </Button>
-    </DropdownMenuTrigger>
-    <DropdownMenuContent className="w-56">
-      {categories.map((cat) => (
-        <DropdownMenuCheckboxItem
-          key={cat.id}
-          checked={selectedCategories.includes(cat.id)}
-          onCheckedChange={(checked) => {
-            setSelectedCategories((prev) =>
-              checked
-                ? [...prev, cat.id]
-                : prev.filter((id) => id !== cat.id)
-            );
-          }}
-        >
-          {cat.name}
-        </DropdownMenuCheckboxItem>
-      ))}
-    </DropdownMenuContent>
-  </DropdownMenu>
-</div>
+      <div className="mb-4 flex justify-end">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline">
+              <Filter className="h-4 w-4 mr-2 text-muted-foreground" />
+              Filter by Category
+              {selectedCategories.length > 0 && (
+                <span className="ml-2 text-xs text-muted-foreground">
+                  ({selectedCategories.length})
+                </span>
+              )}
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent className="w-56">
+            {categories.map((cat) => (
+              <DropdownMenuCheckboxItem
+                key={cat.id}
+                checked={selectedCategories.includes(cat.id)}
+                onCheckedChange={(checked) => {
+                  setSelectedCategories((prev) =>
+                    checked
+                      ? [...prev, cat.id]
+                      : prev.filter((id) => id !== cat.id)
+                  );
+                }}
+              >
+                {cat.name}
+              </DropdownMenuCheckboxItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
 
       {loading ? (
         <Loader />
       ) : (
-        <DataTable
-          columns={columns}
-          data={filteredMenuItems}
-        />
+        <DataTable columns={columns} data={filteredMenuItems} />
       )}
 
       <MenuItemDialog
@@ -265,4 +215,4 @@ export default function MenuItemsPage() {
       />
     </div>
   );
-} 
+}
