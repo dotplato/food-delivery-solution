@@ -63,7 +63,7 @@ function Sidebar({ sidebarOpen, setSidebarOpen }: { sidebarOpen: boolean; setSid
         <div className="fixed inset-0 bg-background/80 backdrop-blur-sm" />
         <div className="fixed inset-y-0 left-0 w-64 bg-background border-r">
           <div className="flex h-16 items-center justify-between px-4">
-            <Link href="/admin" className="text-xl font-bold">
+            <Link href="/" className="text-xl font-bold">
               BHB ADMIN
             </Link>
             <Button
@@ -101,7 +101,7 @@ function Sidebar({ sidebarOpen, setSidebarOpen }: { sidebarOpen: boolean; setSid
       <div className="  lg:inset-y-0 lg:flex lg:w-full lg:h-full lg:flex-col">
         <div className="flex min-h-0 flex-1 flex-col ">
           <div className="flex h-16 items-center px-4">
-            <Link href="/admin" className="text-xl font-bold text-red-500">
+            <Link href="/" className="text-xl font-bold text-red-500">
               BHB ADMIN
             </Link>
           </div>
