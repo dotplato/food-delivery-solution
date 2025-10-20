@@ -17,8 +17,15 @@ import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { LocationDialog } from '@/components/location/LocationDialog';
 import { ShoppingBag, Bike, Loader2, MapPin, Pencil, Trash } from 'lucide-react';
-import { supabase } from '@/lib/supabase/client';
 import { PointsSection } from '@/components/checkout/points-section';
+
+// ✅ Centralized API helper imports
+import {
+  fetchUserProfile,
+  fetchUserPoints,
+  createOrder,
+  insertRoyaltyPoints,
+} from '@/lib/fetch/checkout/checkout-helper';
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
 type OrderType = 'delivery' | 'pickup';
@@ -39,13 +46,6 @@ export default function CheckoutPage() {
   const { user } = useAuth();
   const router = useRouter();
 
-  // Redirect unauthenticated users
-  useEffect(() => {
-    if (typeof window !== 'undefined' && !user) {
-      router.replace('/signin?redirect=/checkout');
-    }
-  }, [user, router]);
-
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
   const [message, setMessage] = useState('');
@@ -57,9 +57,13 @@ export default function CheckoutPage() {
   const [pointsToRedeem, setPointsToRedeem] = useState(0);
   const [pointsDiscount, setPointsDiscount] = useState(0);
 
-  // Calculate subtotal from items
-  const subtotal = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-  
+  // Redirect unauthenticated users
+  useEffect(() => {
+    if (typeof window !== 'undefined' && !user) {
+      router.replace('/signin?redirect=/checkout');
+    }
+  }, [user, router]);
+
   // Redirect if no items in cart
   useEffect(() => {
     if (typeof window !== 'undefined' && items.length === 0 && step !== 'type') {
@@ -67,51 +71,44 @@ export default function CheckoutPage() {
     }
   }, [items, router, step]);
 
+  const subtotal = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
   const deliveryFee = 3.99;
   const total = orderType === 'delivery' ? subtotal + deliveryFee : subtotal;
 
+  // ✅ Fetch user profile (from helper)
   useEffect(() => {
-    async function fetchProfile() {
+    async function loadProfile() {
       if (user?.id) {
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('full_name, phone')
-          .eq('id', user.id)
-          .single();
-        if (data) {
-          setFullName(data.full_name || '');
-          setPhone(data.phone || '');
+        try {
+          const profile = await fetchUserProfile(user.id);
+          setFullName(profile.full_name || '');
+          setPhone(profile.phone || '');
+        } catch (err) {
+          console.error('Error loading user profile:', err);
         }
       }
     }
-    fetchProfile();
+    loadProfile();
   }, [user]);
 
-  // Fetch user points when entering payment step
+  // ✅ Fetch user points (from helper)
   useEffect(() => {
-    const fetchPoints = async () => {
+    async function loadPoints() {
       if (user?.id && step === 'payment') {
-        const { data, error } = await supabase
-          .from('royalty_points')
-          .select('current_balance')
-          .eq('user_id', user.id)
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .single();
-        if (!error && data) {
-          setUserPoints(data.current_balance || 0);
-        } else {
+        try {
+          const points = await fetchUserPoints(user.id);
+          setUserPoints(points);
+        } catch {
           setUserPoints(0);
         }
       }
-    };
-    fetchPoints();
+    }
+    loadPoints();
   }, [user, step]);
 
-  // Calculate points to redeem and discount
+  // Calculate points logic
   useEffect(() => {
     if (redeemPoints && userPoints > 0 && pendingOrder) {
-      // 100 points = $1 off, up to order total
       const maxPoints = Math.min(userPoints, Math.floor(pendingOrder.order_total * 100));
       setPointsToRedeem(maxPoints);
       setPointsDiscount(maxPoints / 100);
@@ -121,10 +118,7 @@ export default function CheckoutPage() {
     }
   }, [redeemPoints, userPoints, pendingOrder]);
 
-  const handleOrderTypeSubmit = () => {
-    setStep('address');
-  };
-
+  const handleOrderTypeSubmit = () => setStep('address');
   const handleLocationSelect = (loc: { lat: number; lng: number; address: string }) => {
     setSelectedLocation(loc);
     setLocationDialogOpen(false);
@@ -134,14 +128,9 @@ export default function CheckoutPage() {
   const handleAddressFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (orderType === 'delivery') {
-      if (!selectedLocation) {
-        setAddressError('Please select a delivery address.');
-        return;
-      }
-      if (!fullName || !phone) {
-        setAddressError('Full Name and Phone are required.');
-        return;
-      }
+      if (!selectedLocation) return setAddressError('Please select a delivery address.');
+      if (!fullName || !phone) return setAddressError('Full Name and Phone are required.');
+
       setPendingOrder({
         items,
         order_type: 'delivery',
@@ -155,11 +144,7 @@ export default function CheckoutPage() {
         full_name: fullName,
       } as any);
     } else {
-      // Pickup: only require name/phone
-      if (!fullName || !phone) {
-        setAddressError('Full Name and Phone are required.');
-        return;
-      }
+      if (!fullName || !phone) return setAddressError('Full Name and Phone are required.');
       setPendingOrder({
         items,
         order_type: 'pickup',
@@ -175,12 +160,12 @@ export default function CheckoutPage() {
     setStep('payment');
   };
 
+  // ✅ Handle Cash on Delivery (using helper)
   const handleCodOrder = async () => {
     if (!pendingOrder) return;
     setIsProcessingCod(true);
 
     try {
-      // Prepare metadata with all cart items and their options
       const orderMetadata = pendingOrder.items.map(item => ({
         menu_item_id: item.id,
         name: item.name,
@@ -190,69 +175,47 @@ export default function CheckoutPage() {
           selectedOption: null,
           selectedAddons: [],
           selectedMealOptions: [],
-          selectedSauce: null
-        }
+          selectedSauce: null,
+        },
       }));
 
-      const orderPayload: any = {
+      const orderPayload = {
         order_total: pendingOrder.order_total,
         delivery_address: pendingOrder.delivery_address,
         delivery_fee: pendingOrder.delivery_fee,
         phone: pendingOrder.phone,
         full_name: pendingOrder.full_name,
         payment_intent_id: null,
-        payment_status: "cash_on_delivery",
-        status: "pending",
-        metadata: orderMetadata // Save all item details with options as JSON
+        payment_status: 'cash_on_delivery',
+        status: 'pending',
+        metadata: orderMetadata,
+        user_id: user?.id,
       };
 
-      if (user?.id) {
-        orderPayload.user_id = user.id;
+      const order = await createOrder(orderPayload);
+
+      if (order && user?.id) {
+        const pointsEarned = Math.floor(pendingOrder.order_total * 10);
+        if (pointsEarned > 0) await insertRoyaltyPoints(user.id, pointsEarned, 0);
       }
 
-      const { data: orderData, error: orderError } = await supabase
-        .from("orders")
-        .insert(orderPayload)
-        .select()
-        .single();
-
-      if (orderError) throw orderError;
-
-      // Add points earned from the order
-      if (orderData && user?.id) {
-        const pointsEarned = Math.floor(pendingOrder.order_total * 10); // 10 points per $1
-        if (pointsEarned > 0) {
-          // Insert new transaction record for points earned
-          const { error: insertError } = await supabase.from('royalty_points').insert({
-            user_id: user.id,
-            points_earned: pointsEarned,
-            points_spent: 0
-          });
-
-          if (insertError) {
-            console.error('Error adding points earned:', insertError);
-          }
-        }
-      }
-
-      toast.success("Order placed successfully!");
+      toast.success('Order placed successfully!');
       clearCart();
-      router.push("/order-success");
-    } catch (error: any) {
-      toast.error("Failed to create order. Please try again.");
-      console.error("COD Order Error:", error);
+      router.push('/order-success');
+    } catch (err) {
+      toast.error('Failed to create order. Please try again.');
+      console.error('COD Order Error:', err);
     } finally {
       setIsProcessingCod(false);
     }
   };
 
-  // Add a new handler for COD with points
+  // ✅ COD with points (using helper)
   const handleCodOrderWithPoints = async (pointsToRedeem: number, pointsDiscount: number) => {
     if (!pendingOrder) return;
     setIsProcessingCod(true);
 
     try {
-      // Prepare metadata with all cart items and their options
       const orderMetadata = pendingOrder.items.map(item => ({
         menu_item_id: item.id,
         name: item.name,
@@ -262,88 +225,39 @@ export default function CheckoutPage() {
           selectedOption: null,
           selectedAddons: [],
           selectedMealOptions: [],
-          selectedSauce: null
-        }
+          selectedSauce: null,
+        },
       }));
 
-      const orderPayload: any = {
+      const orderPayload = {
         order_total: pendingOrder.order_total - pointsDiscount,
         delivery_address: pendingOrder.delivery_address,
         delivery_fee: pendingOrder.delivery_fee,
         phone: pendingOrder.phone,
         full_name: pendingOrder.full_name,
         payment_intent_id: null,
-        payment_status: "cash_on_delivery",
-        status: "pending",
-        metadata: orderMetadata // Save all item details with options as JSON
+        payment_status: 'cash_on_delivery',
+        status: 'pending',
+        metadata: orderMetadata,
+        user_id: user?.id,
       };
 
-      if (user?.id) {
-        orderPayload.user_id = user.id;
+      const order = await createOrder(orderPayload);
+
+      if (order && user?.id) {
+        // Deduct redeemed points
+        if (pointsToRedeem > 0) await insertRoyaltyPoints(user.id, 0, pointsToRedeem);
+        // Add new earned points
+        const pointsEarned = Math.floor((pendingOrder.order_total - pointsDiscount) * 10);
+        if (pointsEarned > 0) await insertRoyaltyPoints(user.id, pointsEarned, 0);
       }
 
-      const { data: orderData, error: orderError } = await supabase
-        .from("orders")
-        .insert(orderPayload)
-        .select()
-        .single();
-
-      if (orderError) throw orderError;
-
-      // Handle royalty points
-      if (orderData) {
-        console.log('Processing royalty points for order:', orderData.id);
-        console.log('Points to redeem:', pointsToRedeem);
-        console.log('Points discount:', pointsDiscount);
-        
-        // Deduct points if any were redeemed
-        if (pointsToRedeem > 0 && user?.id) {
-          console.log('Deducting points:', pointsToRedeem);
-          
-          // Insert new transaction record for points spent
-          const { error: insertError } = await supabase.from('royalty_points').insert({
-            user_id: user.id,
-            points_earned: 0,
-            points_spent: pointsToRedeem
-          });
-
-          if (insertError) {
-            console.error('Error updating royalty points:', insertError);
-          } else {
-            console.log('Successfully deducted points');
-          }
-        }
-
-        // Add points earned from the order (based on the actual amount paid)
-        const pointsEarned = Math.floor((pendingOrder.order_total - pointsDiscount) * 10); // 10 points per $1
-        console.log('Points to earn:', pointsEarned);
-        console.log('Order total:', pendingOrder.order_total);
-        console.log('Points discount:', pointsDiscount);
-        
-        if (pointsEarned > 0 && user?.id) {
-          console.log('Adding points earned:', pointsEarned);
-          
-          // Insert new transaction record for points earned
-          const { error: insertError } = await supabase.from('royalty_points').insert({
-            user_id: user.id,
-            points_earned: pointsEarned,
-            points_spent: 0
-          });
-
-          if (insertError) {
-            console.error('Error adding points earned:', insertError);
-          } else {
-            console.log('Successfully added points earned');
-          }
-        }
-      }
-
-      toast.success("Order placed successfully!");
+      toast.success('Order placed successfully!');
       clearCart();
-      router.push("/order-success");
-    } catch (error: any) {
-      toast.error("Failed to create order. Please try again.");
-      console.error("COD Order Error:", error);
+      router.push('/order-success');
+    } catch (err) {
+      toast.error('Failed to create order. Please try again.');
+      console.error('COD Order Error:', err);
     } finally {
       setIsProcessingCod(false);
     }
