@@ -47,7 +47,7 @@ export function NewOrderNotifier() {
     <>
       <div
         onClick={handleNotificationClick}
-        className="fixed top-20 right-5 bg-blue-500 text-white p-4 rounded-lg shadow-lg cursor-pointer animate-pulse z-50 flex items-center gap-4"
+        className="fixed top-20 right-5 bg-green-700 text-white p-4 rounded-lg shadow-lg cursor-pointer animate-pulse z-50 flex items-center gap-4"
       >
         <Bell size={24} />
         <div>
