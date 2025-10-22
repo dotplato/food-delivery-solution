@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { useAuth } from '@/context/auth-context';
 import { supabase } from '@/lib/supabase/client';
-import { Order, MenuItem } from '@/lib/types';
+import { Order } from '@/lib/types';
 
 export function ClientOrderDetails() {
   const params = useParams();
@@ -33,28 +33,42 @@ export function ClientOrderDetails() {
 
   async function fetchOrder() {
     if (!user || !id) return;
-
     setLoading(true);
     try {
-      // Fetch order
-      const { data: orderData, error: orderError } = await supabase
+      const { data: orderData, error } = await supabase
         .from('orders')
         .select('*')
         .eq('id', id)
         .eq('user_id', user.id)
         .single();
 
-      if (orderError) throw orderError;
+      if (error) throw error;
       if (!orderData) {
         router.push('/orders');
         return;
       }
 
       setOrder(orderData);
+      setOrderItems(orderData.metadata || []);
 
-      // Use metadata from the order instead of fetching from order_items
-      const metadata = orderData.metadata || [];
-      setOrderItems(metadata);
+      // ✅ Realtime subscription for live status updates
+      const channel = supabase
+        .channel(`order-status-${id}`)
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'orders', filter: `id=eq.${id}` },
+          (payload) => {
+            const updated = payload.new;
+            if (updated && updated.status !== orderData.status) {
+              setOrder((prev) => ({ ...prev!, ...updated }));
+            }
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
     } catch (error) {
       console.error('Error fetching order:', error);
     } finally {
@@ -120,6 +134,14 @@ export function ClientOrderDetails() {
                 </Badge>
               </div>
 
+              {/* ✅ Friendly Status Message */}
+              <p className="text-sm text-green-600 mb-4">
+                {order.status === 'accepted' && '🟡 Your order was accepted and is awaiting payment confirmation.'}
+                {order.status === 'processing' && '🟢 Your payment was received! Your order is being prepared.'}
+                {order.status === 'completed' && '✅ Order completed! Enjoy your meal 🍔'}
+                {order.status === 'cancelled' && '❌ Your order was cancelled.'}
+              </p>
+
               <Separator className="mb-6" />
 
               <div className="space-y-6">
@@ -129,7 +151,6 @@ export function ClientOrderDetails() {
                     {orderItems.map((item, index) => (
                       <div key={index} className="flex border-b pb-4">
                         <div className="relative w-16 h-16 rounded-md overflow-hidden flex-shrink-0">
-                          {/* Note: We don't have image_url in metadata, so showing placeholder */}
                           <div className="w-full h-full bg-muted flex items-center justify-center">
                             <span className="text-xs text-muted-foreground">Item</span>
                           </div>
@@ -138,31 +159,10 @@ export function ClientOrderDetails() {
                           <p className="font-medium">{item.name || 'Unknown Item'}</p>
                           <div className="flex justify-between mt-1">
                             <p className="text-sm text-muted-foreground">
-                              Qty: {item.quantity} x ${item.price.toFixed(2)}
+                              Qty: {item.quantity} × ${item.price.toFixed(2)}
                             </p>
                             <p className="font-medium">${(item.quantity * item.price).toFixed(2)}</p>
                           </div>
-                          {/* Display options if available */}
-                          {item.options && (
-                            <div className="text-xs text-muted-foreground mt-1">
-                              {item.options.selectedOption && (
-                                <div>• Option: {item.options.selectedOption.name}</div>
-                              )}
-                              {item.options.selectedAddons && item.options.selectedAddons.length > 0 && (
-                                <div>
-                                  • Addons: {item.options.selectedAddons.map((addon: any) => addon.name).join(', ')}
-                                </div>
-                              )}
-                              {item.options.selectedMealOptions && item.options.selectedMealOptions.length > 0 && (
-                                <div>
-                                  • Meal Options: {item.options.selectedMealOptions.map((meal: any) => meal.name).join(', ')}
-                                </div>
-                              )}
-                              {item.options.selectedSauce && (
-                                <div>• Sauce: {item.options.selectedSauce.name}</div>
-                              )}
-                            </div>
-                          )}
                         </div>
                       </div>
                     ))}
@@ -174,9 +174,7 @@ export function ClientOrderDetails() {
                   <div className="space-y-2">
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Subtotal</span>
-                      <span>
-                        ${(order.order_total - order.delivery_fee).toFixed(2)}
-                      </span>
+                      <span>${(order.order_total - order.delivery_fee).toFixed(2)}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Delivery Fee</span>
@@ -203,19 +201,16 @@ export function ClientOrderDetails() {
                   <p className="text-sm text-muted-foreground">Order Date</p>
                   <p>{format(new Date(order.created_at), 'MMM dd, yyyy h:mm a')}</p>
                 </div>
-                
                 <div>
                   <p className="text-sm text-muted-foreground">Payment Status</p>
                   <Badge variant="outline" className="capitalize">
                     {order.payment_status}
                   </Badge>
                 </div>
-                
                 <div>
                   <p className="text-sm text-muted-foreground">Delivery Address</p>
                   <p>{order.delivery_address || 'Not specified'}</p>
                 </div>
-                
                 <div>
                   <p className="text-sm text-muted-foreground">Contact Phone</p>
                   <p>{order.phone || 'Not specified'}</p>
@@ -233,4 +228,4 @@ export function ClientOrderDetails() {
       </div>
     </div>
   );
-} 
+}
