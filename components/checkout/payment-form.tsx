@@ -1,236 +1,163 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
-import { Button } from '@/components/ui/button';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2 } from 'lucide-react';
-import { useRouter } from 'next/navigation';
-import { useCart } from '@/context/cart-context';
-import { useAuth } from '@/context/auth-context';
-import { supabase } from '@/lib/supabase/client';
-import { PendingOrder } from '@/lib/types';
+import { useState, useEffect } from "react";
+import { CardElement, useStripe, useElements } from "@stripe/react-stripe-js";
+import { Button } from "@/components/ui/button";
+import { Loader2 } from "lucide-react";
+import { supabase } from "@/lib/supabase/client";
+import { toast } from "sonner";
 
-interface PaymentFormProps {
-  pendingOrder: PendingOrder & {
-    pointsDiscount?: number;
-    pointsToRedeem?: number;
-  };
-}
-
-export function PaymentForm({ pendingOrder }: PaymentFormProps) {
+export function PaymentForm({
+  pendingOrder,
+  orderStatus,
+  onCreateOrder,
+  onCardChange,
+  orderId, // Add orderId as a prop
+  onPaymentSuccess, // Add callback for payment success
+}: {
+  pendingOrder: any;
+  orderStatus: string;
+  onCreateOrder: (order: any) => Promise<string>;
+  onCardChange?: (complete: boolean) => void;
+  orderId?: string | null; // Add orderId prop
+  onPaymentSuccess?: () => void; // Add callback for payment success
+}) {
   const stripe = useStripe();
   const elements = useElements();
+
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const router = useRouter();
-  const { clearCart } = useCart();
-  const { user } = useAuth();
+  const [cardComplete, setCardComplete] = useState(false);
+  // Remove local orderId state since we're getting it as a prop
 
-  // Calculate discounted total: subtotal + delivery_fee - pointsDiscount
-  const subtotal = pendingOrder.subtotal || 0;
-  const deliveryFee = pendingOrder.delivery_fee || 0;
-  const pointsDiscount = pendingOrder.pointsDiscount || 0;
-  const total = subtotal + deliveryFee;
-  const discountedTotal = total - pointsDiscount;
-
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-
-    if (!stripe || !elements) {
-      return;
+  // ✅ When admin accepts order, trigger automatic payment
+  useEffect(() => {
+    if (orderStatus === "accepted" && orderId) {
+      console.log("Admin accepted order, triggering payment for orderId:", orderId);
+      handlePayment();
     }
+  }, [orderStatus, orderId]);
 
-    const cardElement = elements.getElement(CardElement);
-    if (!cardElement) {
-      return;
-    }
+  const handlePayment = async () => {
+    if (!stripe || !elements) return;
 
     setLoading(true);
-    setError(null);
-
     try {
-      // Create a payment intent on the server
-      const response = await fetch('/api/create-payment-intent', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          amount: Math.round(discountedTotal * 100), // Use discounted total
-        }),
+      const cardElement = elements.getElement(CardElement);
+      const { error, paymentMethod } = await stripe.createPaymentMethod({
+        type: "card",
+        card: cardElement!,
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to create payment intent');
-      }
-
-      const data = await response.json();
-      const clientSecret = data.clientSecret;
-
-      // Confirm the payment with Stripe
-      const { error: paymentError, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
-        payment_method: {
-          card: cardElement,
-          billing_details: {
-            name: user?.email || 'Guest',
-          },
-        },
-      });
-
-      if (paymentError) {
-        throw new Error(paymentError.message);
-      }
-
-      if (paymentIntent.status === 'succeeded') {
-        try {
-          await createOrder(paymentIntent.id);
-        } catch (orderError) {
-          // Log but do not block user
-          console.error('Order creation failed after payment:', orderError);
-        }
-        clearCart();
-        router.push('/order-success');
+      if (error) {
+        console.error(error);
+        toast.error("Payment failed: " + error.message);
+        setLoading(false);
         return;
       }
+
+      // ✅ Use Next.js API route to create payment intent
+      const res = await fetch("/api/create-payment-intent", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ amount: Math.round(pendingOrder.order_total * 100) }),
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || "Failed to create payment intent");
+      }
+
+      const paymentData = await res.json();
+
+      // ✅ Confirm payment with Stripe
+      const { error: confirmError, paymentIntent } = await stripe.confirmCardPayment(
+        paymentData.clientSecret,
+        {
+          payment_method: paymentMethod.id,
+        }
+      );
+
+      if (confirmError) {
+        throw new Error(confirmError.message);
+      }
+
+      if (paymentIntent.status === "succeeded") {
+        // ✅ Update order status in Supabase
+        const { error: updateError } = await supabase
+          .from("orders")
+          .update({ 
+            payment_status: "paid",
+            status: "processing",
+            payment_intent_id: paymentIntent.id
+          })
+          .eq("id", orderId);
+
+        if (updateError) {
+          console.error("Failed to update order:", updateError);
+          toast.error("Payment succeeded but failed to update order status.");
+        } else {
+          toast.success("✅ Payment successful! Order is now processing.");
+          // Clear cart and redirect after successful payment
+          onPaymentSuccess?.();
+        }
+      }
     } catch (err: any) {
-      console.error('Payment error:', err);
-      setError(err.message || 'An error occurred during payment processing');
+      console.error("Payment error:", err);
+      toast.error("Payment failed: " + err.message);
     } finally {
       setLoading(false);
     }
   };
 
-  const createOrder = async (paymentIntentId: string) => {
-    if (!user) return;
+  const handlePlaceOrder = async () => {
+    if (!cardComplete) {
+      alert("Please complete your card details first.");
+      return;
+    }
 
+    setLoading(true);
     try {
-      // Prepare metadata with all cart items and their options
-      const orderMetadata = pendingOrder.items.map(item => ({
-        menu_item_id: item.id,
-        name: item.name,
-        quantity: item.quantity,
-        price: item.price,
-        options: item.options || {
-          selectedOption: null,
-          selectedAddons: [],
-          selectedMealOptions: [],
-          selectedSauce: null
-        }
-      }));
-
-      const { data: orderData, error: orderError } = await supabase
-        .from('orders')
-        .insert({
-          user_id: user.id,
-          subtotal, // sum of item prices
-          delivery_fee: deliveryFee,
-          order_total: discountedTotal, // true paid amount (subtotal + delivery_fee - pointsDiscount)
-          points_discount: pointsDiscount,
-          delivery_address: pendingOrder.delivery_address,
-          phone: pendingOrder.phone,
-          full_name: pendingOrder.full_name,
-          payment_intent_id: paymentIntentId,
-          payment_status: 'paid',
-          status: 'pending',
-          order_type: pendingOrder.order_type, // Pass order type for admin
-          metadata: orderMetadata // Save all item details with options as JSON
-        })
-        .select()
-        .single();
-
-      if (orderError) throw orderError;
-
-      // Handle royalty points
-      if (orderData) {
-        console.log('Payment form - Processing royalty points for order:', orderData.id);
-        console.log('Payment form - Points to redeem:', pendingOrder.pointsToRedeem);
-        console.log('Payment form - Points discount:', pendingOrder.pointsDiscount);
-        
-        // Deduct points if any were redeemed
-        if (pendingOrder.pointsToRedeem && pendingOrder.pointsToRedeem > 0) {
-          console.log('Payment form - Deducting points:', pendingOrder.pointsToRedeem);
-          
-          // Insert new transaction record for points spent
-          const { error: insertError } = await supabase.from('royalty_points').insert({
-            user_id: user.id,
-            points_earned: 0,
-            points_spent: pendingOrder.pointsToRedeem
-          });
-
-          if (insertError) {
-            console.error('Payment form - Error updating royalty points:', insertError);
-          } else {
-            console.log('Payment form - Successfully deducted points');
-          }
-        }
-
-        // Add points earned from the order (based on the actual amount paid)
-        const pointsEarned = Math.floor(discountedTotal * 10); // 10 points per $1
-        console.log('Payment form - Points to earn:', pointsEarned);
-        console.log('Payment form - Discounted total:', discountedTotal);
-        
-        if (pointsEarned > 0) {
-          console.log('Payment form - Adding points earned:', pointsEarned);
-          
-          // Insert new transaction record for points earned
-          const { error: insertError } = await supabase.from('royalty_points').insert({
-            user_id: user.id,
-            points_earned: pointsEarned,
-            points_spent: 0
-          });
-
-          if (insertError) {
-            console.error('Payment form - Error adding points earned:', insertError);
-          } else {
-            console.log('Payment form - Successfully added points earned');
-          }
-        }
-      }
-    } catch (error) {
-      console.error('Error creating order:', error);
-      throw error;
+      const createdOrderId = await onCreateOrder(pendingOrder);
+      // The orderId will be handled by the parent component
+      console.log("Order created with ID:", createdOrderId);
+    } catch (err) {
+      console.error("Order creation failed:", err);
+      alert("Failed to place order.");
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      <div className="space-y-4">
-        <h3 className="text-lg font-medium">Card Details</h3>
-        <div className="border rounded-md p-4">
-          <CardElement 
-            options={{
-              style: {
-                base: {
-                  fontSize: '16px',
-                  color: '#424770',
-                  '::placeholder': {
-                    color: '#aab7c4',
-                  },
-                },
-                invalid: {
-                  color: '#9e2146',
-                },
+    <div className="space-y-4">
+      <div className="p-4 border rounded-lg">
+        <CardElement
+          options={{
+            style: {
+              base: {
+                fontSize: "16px",
+                color: "#424770",
+                "::placeholder": { color: "#aab7c4" },
               },
-            }}
-          />
-        </div>
+              invalid: { color: "#9e2146" },
+            },
+          }}
+          onChange={(e) => {
+            setCardComplete(e.complete);
+            onCardChange?.(e.complete);
+          }}
+        />
       </div>
-
-      {error && (
-        <Alert variant="destructive">
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      )}
 
       <div className="space-y-2">
         <p className="text-sm text-muted-foreground">
-          Test Card: 4242 4242 4242 4242, any future date, any CVC
+          Test Card: 4242 4242 4242 4242 — any future date, any CVC
         </p>
-        <Button 
-          type="submit" 
-          className="w-full bg-red-600 hover:bg-red-700" 
-          disabled={!stripe || loading}
+        <Button
+          id="stripePayButton"
+          onClick={handlePlaceOrder}
+          disabled={!cardComplete || loading}
+          className="w-full bg-blue-600 hover:bg-blue-700 text-white"
         >
           {loading ? (
             <>
@@ -238,10 +165,10 @@ export function PaymentForm({ pendingOrder }: PaymentFormProps) {
               Processing...
             </>
           ) : (
-            `Pay $${discountedTotal.toFixed(2)}`
+            "Place Order"
           )}
         </Button>
       </div>
-    </form>
+    </div>
   );
 }
